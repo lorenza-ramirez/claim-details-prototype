@@ -473,6 +473,8 @@ function ClaimContextPanel({
   onToggleNav: () => void
 }) {
   const canvasRef = useRef<HTMLDivElement>(null)
+  const flyoutCloseTimer = useRef<number | null>(null)
+  const [navFlyoutOpen, setNavFlyoutOpen] = useState(false)
   const activityBadge = CONTEXT_NAV.find((item) => item.id === 'activity')?.badge
 
   useEffect(() => {
@@ -505,31 +507,115 @@ function ClaimContextPanel({
     return () => observer.disconnect()
   }, [onSelect])
 
+  useEffect(() => {
+    if (!navCollapsed) setNavFlyoutOpen(false)
+  }, [navCollapsed])
+
+  useEffect(() => {
+    return () => {
+      if (flyoutCloseTimer.current != null) window.clearTimeout(flyoutCloseTimer.current)
+    }
+  }, [])
+
+  function openNavFlyout() {
+    if (flyoutCloseTimer.current != null) {
+      window.clearTimeout(flyoutCloseTimer.current)
+      flyoutCloseTimer.current = null
+    }
+    setNavFlyoutOpen(true)
+  }
+
+  function scheduleCloseNavFlyout() {
+    if (flyoutCloseTimer.current != null) window.clearTimeout(flyoutCloseTimer.current)
+    flyoutCloseTimer.current = window.setTimeout(() => {
+      setNavFlyoutOpen(false)
+      flyoutCloseTimer.current = null
+    }, 120)
+  }
+
   function handleNavSelect(id: ContextNavId) {
     onSelect(id)
+    setNavFlyoutOpen(false)
     const target = document.getElementById(sectionDomId(id))
     target?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+
+  function renderNavItems() {
+    return CONTEXT_NAV.map((item) => {
+      const isActive = active === item.id
+      return (
+        <button
+          key={item.id}
+          type="button"
+          className={
+            isActive ? 'context-nav__item context-nav__item--active' : 'context-nav__item'
+          }
+          aria-current={isActive ? 'true' : undefined}
+          onClick={() => handleNavSelect(item.id)}
+        >
+          <span className="context-nav__main">
+            {item.sparkle ? <SparkleIcon /> : <Icon src={item.icon!} size={20} />}
+            <span>{item.label}</span>
+          </span>
+          {item.badge != null ? (
+            <span className="context-nav__badge">{item.badge}</span>
+          ) : null}
+        </button>
+      )
+    })
   }
 
   return (
     <div className="claim-context">
       <div className="panel-header">
-        <button
-          type="button"
-          className={
-            navCollapsed
-              ? 'icon-btn panel-header__menu'
-              : 'icon-btn icon-btn--bordered panel-header__menu'
-          }
-          aria-label={navCollapsed ? 'Expand claim context nav' : 'Collapse claim context nav'}
-          aria-expanded={!navCollapsed}
-          onClick={onToggleNav}
+        <div
+          className="panel-header__menu-wrap"
+          onMouseEnter={() => {
+            if (navCollapsed) openNavFlyout()
+          }}
+          onMouseLeave={() => {
+            if (navCollapsed) scheduleCloseNavFlyout()
+          }}
         >
-          <Icon src={menu} size={20} />
-          {activityBadge != null ? (
-            <span className="panel-header__menu-badge">{activityBadge}</span>
+          <button
+            type="button"
+            className={
+              navCollapsed
+                ? 'icon-btn panel-header__menu'
+                : 'icon-btn icon-btn--bordered panel-header__menu'
+            }
+            aria-label={navCollapsed ? 'Expand claim context nav' : 'Collapse claim context nav'}
+            aria-expanded={!navCollapsed || navFlyoutOpen}
+            aria-haspopup={navCollapsed ? 'menu' : undefined}
+            onClick={onToggleNav}
+            onFocus={() => {
+              if (navCollapsed) openNavFlyout()
+            }}
+            onBlur={(event) => {
+              if (!navCollapsed) return
+              const next = event.relatedTarget
+              if (next instanceof Node && event.currentTarget.parentElement?.contains(next)) {
+                return
+              }
+              scheduleCloseNavFlyout()
+            }}
+          >
+            <Icon src={menu} size={20} />
+            {activityBadge != null ? (
+              <span className="panel-header__menu-badge">{activityBadge}</span>
+            ) : null}
+          </button>
+          {navCollapsed && navFlyoutOpen ? (
+            <nav
+              className="context-nav context-nav--floating"
+              aria-label="Claim sections"
+              onMouseEnter={openNavFlyout}
+              onMouseLeave={scheduleCloseNavFlyout}
+            >
+              {renderNavItems()}
+            </nav>
           ) : null}
-        </button>
+        </div>
         <h2 className="panel-header__title">Claim Context</h2>
         <button type="button" className="icon-btn icon-btn--outlined" aria-label="Tune claim context">
           <Icon src={tune} size={20} />
@@ -539,32 +625,7 @@ function ClaimContextPanel({
       <div className="claim-context__body">
         {!navCollapsed ? (
           <nav className="context-nav" aria-label="Claim sections">
-            {CONTEXT_NAV.map((item) => {
-              const isActive = active === item.id
-              return (
-                <button
-                  key={item.id}
-                  type="button"
-                  className={
-                    isActive ? 'context-nav__item context-nav__item--active' : 'context-nav__item'
-                  }
-                  aria-current={isActive ? 'true' : undefined}
-                  onClick={() => handleNavSelect(item.id)}
-                >
-                  <span className="context-nav__main">
-                    {item.sparkle ? (
-                      <SparkleIcon />
-                    ) : (
-                      <Icon src={item.icon!} size={20} />
-                    )}
-                    <span>{item.label}</span>
-                  </span>
-                  {item.badge != null ? (
-                    <span className="context-nav__badge">{item.badge}</span>
-                  ) : null}
-                </button>
-              )
-            })}
+            {renderNavItems()}
           </nav>
         ) : null}
 
@@ -732,17 +793,25 @@ function ClaimDetailsPageInner() {
                 )}
                 <PropertiesPanel collapsed={isSplit} />
                 {isSide && view ? (
-                  <WidgetViewPanel
-                    mode="side"
-                    title={view.recordTitle ?? view.title}
-                    widgetId={view.widgetId}
-                    onClose={close}
-                    onOpenSplit={() => openSplit(view.widgetId, view.title)}
-                    onOpenFull={() => openFull(view.widgetId, view.title)}
-                    recordIndex={view.recordIndex}
-                    recordCount={view.records?.length}
-                    onNavigateRecord={navigateRecord}
-                  />
+                  <>
+                    <button
+                      type="button"
+                      className="widget-view-backdrop"
+                      aria-label="Close side view"
+                      onClick={close}
+                    />
+                    <WidgetViewPanel
+                      mode="side"
+                      title={view.recordTitle ?? view.title}
+                      widgetId={view.widgetId}
+                      onClose={close}
+                      onOpenSplit={() => openSplit(view.widgetId, view.title)}
+                      onOpenFull={() => openFull(view.widgetId, view.title)}
+                      recordIndex={view.recordIndex}
+                      recordCount={view.records?.length}
+                      onNavigateRecord={navigateRecord}
+                    />
+                  </>
                 ) : null}
               </div>
             </div>

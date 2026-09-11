@@ -717,6 +717,17 @@ img {
     0 4px 10px rgba(0, 0, 0, 0.12);
 }
 
+.widget-view-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 19;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: default;
+}
+
 .widget-view-panel__header {
   flex-shrink: 0;
   justify-content: flex-start;
@@ -793,6 +804,8 @@ img {
   border-bottom: 1px solid var(--outline);
   flex-shrink: 0;
   box-sizing: border-box;
+  position: relative;
+  z-index: 5;
 }
 
 .panel-header--properties {
@@ -818,6 +831,11 @@ img {
   height: 28px;
 }
 
+.panel-header__menu-wrap {
+  position: relative;
+  flex-shrink: 0;
+}
+
 .panel-header__menu {
   position: relative;
 }
@@ -841,6 +859,20 @@ img {
   font-weight: 700;
   line-height: 1;
   pointer-events: none;
+}
+
+.context-nav--floating {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 40;
+  width: 260px;
+  max-height: min(420px, calc(100vh - 160px));
+  border: 1px solid var(--outline);
+  border-radius: 12px;
+  box-shadow:
+    0 2px 20px 1px rgba(0, 0, 0, 0.1),
+    0 4px 10px rgba(0, 0, 0, 0.12);
 }
 
 .icon-btn--outlined {
