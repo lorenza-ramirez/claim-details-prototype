@@ -33,23 +33,61 @@ const ROWS: RemittanceRow[] = [
     source: 'EOB',
     importedDate: '07/21/2026',
   },
+  {
+    checkNumber: 'ARC680102',
+    checkDate: '06/14/2026',
+    insPaid: '$189.00',
+    prAmount: '$45.00',
+    otherPr: '$0.00',
+    status: 'Posted',
+    depositVerified: 'Verified',
+    sentTo: 'NF-GEICO',
+    memberId: 'BQ60358Y',
+    source: '835',
+    importedDate: '06/15/2026',
+  },
+  {
+    checkNumber: 'ARC679944',
+    checkDate: '05/02/2026',
+    insPaid: '$110.50',
+    prAmount: '$20.00',
+    otherPr: '$12.00',
+    status: 'Posted',
+    depositVerified: 'Pending',
+    sentTo: 'NF-GEICO',
+    memberId: 'BQ60358Y',
+    source: 'EOB',
+    importedDate: '05/03/2026',
+  },
 ]
 
-export function RemittancesWidget() {
+export function RemittancesWidget({ hideHeader = false }: { hideHeader?: boolean }) {
   const { openSide } = useWidgetView()
+  const records = ROWS.map((row) => row.checkNumber)
+
+  function openRecord(checkNumber: string) {
+    openSide('remittances', 'Remittances', checkNumber, records)
+  }
 
   return (
-    <section className="remittances-widget" aria-labelledby="remittances-widget-title">
-      <header className="remittances-widget__title-row">
-        <h3 id="remittances-widget-title" className="remittances-widget__title">
-          Remittances
-        </h3>
-        <WidgetViewButtons
-          widgetId="remittances"
-          title="Remittances"
-          className="remittances-widget__actions"
-        />
-      </header>
+    <section
+      className="remittances-widget"
+      {...(hideHeader
+        ? { 'aria-label': 'Remittances' }
+        : { 'aria-labelledby': 'remittances-widget-title' })}
+    >
+      {hideHeader ? null : (
+        <header className="remittances-widget__title-row">
+          <h3 id="remittances-widget-title" className="remittances-widget__title">
+            Remittances
+          </h3>
+          <WidgetViewButtons
+            widgetId="remittances"
+            title="Remittances"
+            className="remittances-widget__actions"
+          />
+        </header>
+      )}
 
       <div className="remittances-widget__table-wrap">
         <table className="remittances-widget__table">
@@ -117,11 +155,11 @@ export function RemittancesWidget() {
                 tabIndex={0}
                 role="button"
                 aria-label={`Open remittance ${row.checkNumber}`}
-                onClick={() => openSide('remittances', 'Remittances', row.checkNumber)}
+                onClick={() => openRecord(row.checkNumber)}
                 onKeyDown={(event) => {
                   if (event.key === 'Enter' || event.key === ' ') {
                     event.preventDefault()
-                    openSide('remittances', 'Remittances', row.checkNumber)
+                    openRecord(row.checkNumber)
                   }
                 }}
               >

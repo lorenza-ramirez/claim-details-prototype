@@ -76,21 +76,33 @@ const STATUS_ICON: Record<StatusKind, string> = {
   rejected: submissionsRejected,
 }
 
-export function SubmissionsWidget() {
+export function SubmissionsWidget({ hideHeader = false }: { hideHeader?: boolean }) {
   const { openSide } = useWidgetView()
+  const records = ROWS.map((row, index) => `${row.id} · ${row.created}`)
+
+  function openRecord(index: number) {
+    openSide('submissions', 'Submissions', records[index], records)
+  }
 
   return (
-    <section className="submissions-widget" aria-labelledby="submissions-widget-title">
-      <header className="submissions-widget__title-row">
-        <h3 id="submissions-widget-title" className="submissions-widget__title">
-          Submissions
-        </h3>
-        <WidgetViewButtons
-          widgetId="submissions"
-          title="Submissions"
-          className="submissions-widget__actions"
-        />
-      </header>
+    <section
+      className="submissions-widget"
+      {...(hideHeader
+        ? { 'aria-label': 'Submissions' }
+        : { 'aria-labelledby': 'submissions-widget-title' })}
+    >
+      {hideHeader ? null : (
+        <header className="submissions-widget__title-row">
+          <h3 id="submissions-widget-title" className="submissions-widget__title">
+            Submissions
+          </h3>
+          <WidgetViewButtons
+            widgetId="submissions"
+            title="Submissions"
+            className="submissions-widget__actions"
+          />
+        </header>
+      )}
 
       <div className="submissions-widget__table-wrap">
         <table className="submissions-widget__table">
@@ -151,12 +163,12 @@ export function SubmissionsWidget() {
                 className="widget-table-row"
                 tabIndex={0}
                 role="button"
-                aria-label={`Open submission ${row.id}`}
-                onClick={() => openSide('submissions', 'Submissions', row.id)}
+                aria-label={`Open submission ${records[index]}`}
+                onClick={() => openRecord(index)}
                 onKeyDown={(event) => {
                   if (event.key === 'Enter' || event.key === ' ') {
                     event.preventDefault()
-                    openSide('submissions', 'Submissions', row.id)
+                    openRecord(index)
                   }
                 }}
               >

@@ -224,19 +224,26 @@ function Meta({ viewMore }: { viewMore?: boolean }) {
   )
 }
 
-export function ActivityWidget() {
+export function ActivityWidget({ hideHeader = false }: { hideHeader?: boolean }) {
   return (
-    <section className="activity-widget" aria-labelledby="activity-widget-title">
-      <header className="activity-widget__title-row">
-        <h3 id="activity-widget-title" className="activity-widget__title">
-          Activity
-        </h3>
-        <WidgetViewButtons
-          widgetId="activity"
-          title="Activity"
-          className="activity-widget__actions"
-        />
-      </header>
+    <section
+      className="activity-widget"
+      {...(hideHeader
+        ? { 'aria-label': 'Activity' }
+        : { 'aria-labelledby': 'activity-widget-title' })}
+    >
+      {hideHeader ? null : (
+        <header className="activity-widget__title-row">
+          <h3 id="activity-widget-title" className="activity-widget__title">
+            Activity
+          </h3>
+          <WidgetViewButtons
+            widgetId="activity"
+            title="Activity"
+            className="activity-widget__actions"
+          />
+        </header>
+      )}
 
       <div className="activity-widget__body">
         <ol className="activity-widget__list">

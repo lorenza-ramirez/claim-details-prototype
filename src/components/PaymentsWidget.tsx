@@ -157,9 +157,14 @@ function PostingLedger() {
     '234567': true,
     '234568': true,
   })
+  const records = PROCEDURES.map((row) => row.procedure)
 
   function toggleProcedure(id: string) {
     setOpenProcedures((prev) => ({ ...prev, [id]: !prev[id] }))
+  }
+
+  function openRecord(procedure: string) {
+    openSide('payments', 'Payments', procedure, records)
   }
 
   return (
@@ -240,7 +245,7 @@ function PostingLedger() {
                   row={row}
                   isOpen={isOpen}
                   onToggle={() => toggleProcedure(row.procedure)}
-                  onOpenRecord={() => openSide('payments', 'Payments', row.procedure)}
+                  onOpenRecord={() => openRecord(row.procedure)}
                 />
               )
             })}
@@ -321,28 +326,36 @@ function ProcedureRows({
   )
 }
 
-export function PaymentsWidget() {
+export function PaymentsWidget({ hideHeader = false }: { hideHeader?: boolean }) {
   const [tab, setTab] = useState<PaymentsTab>('perPayer')
   const [primaryOpen, setPrimaryOpen] = useState(true)
   const [secondaryOpen, setSecondaryOpen] = useState(false)
   const { openSide } = useWidgetView()
+  const payerRecords = ['Primary', 'Secondary', 'Total']
 
   function openPayer(label: string) {
-    openSide('payments', 'Payments', label)
+    openSide('payments', 'Payments', label, payerRecords)
   }
 
   return (
-    <section className="payments-widget" aria-labelledby="payments-widget-title">
-      <header className="payments-widget__title-row">
-        <h3 id="payments-widget-title" className="payments-widget__title">
-          Payments
-        </h3>
-        <WidgetViewButtons
-          widgetId="payments"
-          title="Payments"
-          className="payments-widget__actions"
-        />
-      </header>
+    <section
+      className="payments-widget"
+      {...(hideHeader
+        ? { 'aria-label': 'Payments' }
+        : { 'aria-labelledby': 'payments-widget-title' })}
+    >
+      {hideHeader ? null : (
+        <header className="payments-widget__title-row">
+          <h3 id="payments-widget-title" className="payments-widget__title">
+            Payments
+          </h3>
+          <WidgetViewButtons
+            widgetId="payments"
+            title="Payments"
+            className="payments-widget__actions"
+          />
+        </header>
+      )}
 
       <div className="payments-widget__toolbar">
         <div className="payments-widget__tabs" role="tablist" aria-label="Payments views">

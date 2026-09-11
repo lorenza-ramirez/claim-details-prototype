@@ -145,7 +145,13 @@ function UploadIcon() {
   )
 }
 
-export function DocumentationWidget({ title = 'Documentation' }: { title?: string }) {
+export function DocumentationWidget({
+  title = 'Documentation',
+  hideHeader = false,
+}: {
+  title?: string
+  hideHeader?: boolean
+}) {
   const [filter, setFilter] = useState<DocCategory>('all')
   const { openSide } = useWidgetView()
 
@@ -153,19 +159,31 @@ export function DocumentationWidget({ title = 'Documentation' }: { title?: strin
     () => (filter === 'all' ? ROWS : ROWS.filter((row) => row.category === filter)),
     [filter],
   )
+  const records = useMemo(() => rows.map((row) => row.name), [rows])
+
+  function openRecord(name: string) {
+    openSide('documentation', title, name, records)
+  }
 
   return (
-    <section className="documentation-widget" aria-labelledby="documentation-widget-title">
-      <header className="documentation-widget__title-row">
-        <h3 id="documentation-widget-title" className="documentation-widget__title">
-          {title}
-        </h3>
-        <WidgetViewButtons
-          widgetId="documentation"
-          title={title}
-          className="documentation-widget__actions"
-        />
-      </header>
+    <section
+      className="documentation-widget"
+      {...(hideHeader
+        ? { 'aria-label': title }
+        : { 'aria-labelledby': 'documentation-widget-title' })}
+    >
+      {hideHeader ? null : (
+        <header className="documentation-widget__title-row">
+          <h3 id="documentation-widget-title" className="documentation-widget__title">
+            {title}
+          </h3>
+          <WidgetViewButtons
+            widgetId="documentation"
+            title={title}
+            className="documentation-widget__actions"
+          />
+        </header>
+      )}
 
       <div className="documentation-widget__toolbar">
         <div className="documentation-widget__tabs" role="tablist" aria-label="Document categories">
@@ -238,11 +256,11 @@ export function DocumentationWidget({ title = 'Documentation' }: { title?: strin
                 tabIndex={0}
                 role="button"
                 aria-label={`Open document ${row.name}`}
-                onClick={() => openSide('documentation', title, row.name)}
+                onClick={() => openRecord(row.name)}
                 onKeyDown={(event) => {
                   if (event.key === 'Enter' || event.key === ' ') {
                     event.preventDefault()
-                    openSide('documentation', title, row.name)
+                    openRecord(row.name)
                   }
                 }}
               >
@@ -254,7 +272,7 @@ export function DocumentationWidget({ title = 'Documentation' }: { title?: strin
                       className="documentation-widget__file-name"
                       onClick={(event) => {
                         event.stopPropagation()
-                        openSide('documentation', title, row.name)
+                        openRecord(row.name)
                       }}
                     >
                       {row.name}

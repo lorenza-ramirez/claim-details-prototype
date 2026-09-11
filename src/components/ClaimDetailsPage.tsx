@@ -516,7 +516,11 @@ function ClaimContextPanel({
       <div className="panel-header">
         <button
           type="button"
-          className="icon-btn icon-btn--bordered panel-header__menu"
+          className={
+            navCollapsed
+              ? 'icon-btn panel-header__menu'
+              : 'icon-btn icon-btn--bordered panel-header__menu'
+          }
           aria-label={navCollapsed ? 'Expand claim context nav' : 'Collapse claim context nav'}
           aria-expanded={!navCollapsed}
           onClick={onToggleNav}
@@ -672,7 +676,7 @@ function ClaimDetailsPageInner() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [contextNavCollapsed, setContextNavCollapsed] = useState(false)
   const [version, setVersion] = useState<'v1' | 'v2'>('v1')
-  const { view, close, openSide, openSplit, openFull } = useWidgetView()
+  const { view, close, openSide, openSplit, openFull, navigateRecord } = useWidgetView()
 
   const isFull = view?.mode === 'full'
   const isSplit = view?.mode === 'split'
@@ -695,40 +699,52 @@ function ClaimDetailsPageInner() {
               onExitFullView={close}
             />
             <div className="canvas-body">
-              {isFull && view ? (
-                <WidgetViewPanel mode="full" title={view.title} onClose={close} />
-              ) : (
-                <>
-                  {version === 'v1' ? (
-                    <ClaimContextPanel
-                      active={activeNav}
-                      onSelect={setActiveNav}
-                      navCollapsed={contextNavCollapsed}
-                      onToggleNav={() => setContextNavCollapsed((value) => !value)}
-                    />
-                  ) : (
-                    <ClaimV2Panel />
-                  )}
-                  {isSplit && view ? (
-                    <WidgetViewPanel
-                      mode="split"
-                      title={view.title}
-                      onClose={close}
-                      onOpenSide={() => openSide(view.widgetId, view.title)}
-                    />
-                  ) : null}
-                </>
-              )}
-              <PropertiesPanel collapsed={isSplit} />
-              {isSide && view ? (
-                <WidgetViewPanel
-                  mode="side"
-                  title={view.recordTitle ?? view.title}
-                  onClose={close}
-                  onOpenSplit={() => openSplit(view.widgetId, view.title)}
-                  onOpenFull={() => openFull(view.widgetId, view.title)}
-                />
-              ) : null}
+              <div className="canvas-stage">
+                {isFull && view ? (
+                  <WidgetViewPanel
+                    mode="full"
+                    title={view.title}
+                    widgetId={view.widgetId}
+                    onClose={close}
+                  />
+                ) : (
+                  <>
+                    {version === 'v1' ? (
+                      <ClaimContextPanel
+                        active={activeNav}
+                        onSelect={setActiveNav}
+                        navCollapsed={contextNavCollapsed}
+                        onToggleNav={() => setContextNavCollapsed((value) => !value)}
+                      />
+                    ) : (
+                      <ClaimV2Panel />
+                    )}
+                    {isSplit && view ? (
+                      <WidgetViewPanel
+                        mode="split"
+                        title={view.title}
+                        widgetId={view.widgetId}
+                        onClose={close}
+                        onOpenSide={() => openSide(view.widgetId, view.title)}
+                      />
+                    ) : null}
+                  </>
+                )}
+                <PropertiesPanel collapsed={isSplit} />
+                {isSide && view ? (
+                  <WidgetViewPanel
+                    mode="side"
+                    title={view.recordTitle ?? view.title}
+                    widgetId={view.widgetId}
+                    onClose={close}
+                    onOpenSplit={() => openSplit(view.widgetId, view.title)}
+                    onOpenFull={() => openFull(view.widgetId, view.title)}
+                    recordIndex={view.recordIndex}
+                    recordCount={view.records?.length}
+                    onNavigateRecord={navigateRecord}
+                  />
+                ) : null}
+              </div>
             </div>
           </section>
         </div>

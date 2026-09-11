@@ -9,11 +9,14 @@ import {
 import {
   dockToRight,
   expandContent,
+  keyboardArrowDown2,
+  keyboardArrowUp,
   leftPanelClose,
   viewDoubleArrow,
   viewMenu,
   viewPreview,
 } from '../assets/icons'
+import { ClaimDetailsSplitContent } from './ClaimDetailsSplitContent'
 
 export type WidgetViewId =
   | 'details'
@@ -31,13 +34,22 @@ export type WidgetViewState = {
   title: string
   /** Optional record label when opening from a table row. */
   recordTitle?: string
+  /** Sibling record labels for side-view prev/next navigation. */
+  records?: string[]
+  recordIndex?: number
 }
 
 type WidgetViewContextValue = {
   view: WidgetViewState | null
   openSplit: (widgetId: WidgetViewId, title: string) => void
   openFull: (widgetId: WidgetViewId, title: string) => void
-  openSide: (widgetId: WidgetViewId, title: string, recordTitle?: string) => void
+  openSide: (
+    widgetId: WidgetViewId,
+    title: string,
+    recordTitle?: string,
+    records?: string[],
+  ) => void
+  navigateRecord: (delta: -1 | 1) => void
   close: () => void
 }
 
@@ -54,8 +66,40 @@ export function WidgetViewProvider({ children }: { children: ReactNode }) {
     setView({ mode: 'full', widgetId, title })
   }, [])
 
-  const openSide = useCallback((widgetId: WidgetViewId, title: string, recordTitle?: string) => {
-    setView({ mode: 'side', widgetId, title, recordTitle })
+  const openSide = useCallback(
+    (widgetId: WidgetViewId, title: string, recordTitle?: string, records?: string[]) => {
+      const list = records && records.length > 0 ? records : undefined
+      let recordIndex: number | undefined
+      if (list && recordTitle) {
+        const match = list.indexOf(recordTitle)
+        recordIndex = match >= 0 ? match : 0
+      } else if (list) {
+        recordIndex = 0
+      }
+
+      setView({
+        mode: 'side',
+        widgetId,
+        title,
+        recordTitle: list && recordIndex != null ? list[recordIndex] : recordTitle,
+        records: list,
+        recordIndex,
+      })
+    },
+    [],
+  )
+
+  const navigateRecord = useCallback((delta: -1 | 1) => {
+    setView((current) => {
+      if (!current?.records || current.recordIndex == null) return current
+      const nextIndex = current.recordIndex + delta
+      if (nextIndex < 0 || nextIndex >= current.records.length) return current
+      return {
+        ...current,
+        recordIndex: nextIndex,
+        recordTitle: current.records[nextIndex],
+      }
+    })
   }, [])
 
   const close = useCallback(() => {
@@ -63,8 +107,8 @@ export function WidgetViewProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const value = useMemo(
-    () => ({ view, openSplit, openFull, openSide, close }),
-    [view, openSplit, openFull, openSide, close],
+    () => ({ view, openSplit, openFull, openSide, navigateRecord, close }),
+    [view, openSplit, openFull, openSide, navigateRecord, close],
   )
 
   return <WidgetViewContext.Provider value={value}>{children}</WidgetViewContext.Provider>
@@ -141,20 +185,37 @@ export function WidgetViewButtons({
 export function WidgetViewPanel({
   mode,
   title,
+  widgetId,
   onClose,
   onOpenSide,
   onOpenSplit,
   onOpenFull,
+  recordIndex,
+  recordCount,
+  onNavigateRecord,
 }: {
   mode: WidgetViewMode
   title: string
+  widgetId?: WidgetViewId
   onClose: () => void
   onOpenSide?: () => void
   onOpenSplit?: () => void
   onOpenFull?: () => void
+  recordIndex?: number
+  recordCount?: number
+  onNavigateRecord?: (delta: -1 | 1) => void
 }) {
   const showSplitActions = mode === 'split'
   const showSideActions = mode === 'side'
+  const showRecordNav =
+    showSideActions &&
+    recordCount != null &&
+    recordCount > 1 &&
+    recordIndex != null &&
+    onNavigateRecord
+
+  const canGoPrev = showRecordNav && recordIndex > 0
+  const canGoNext = showRecordNav && recordIndex < recordCount - 1
 
   return (
     <aside
@@ -206,6 +267,41 @@ export function WidgetViewPanel({
           </div>
         ) : showSideActions ? (
           <div className="widget-view-panel__header-actions">
+            {showRecordNav ? (
+              <>
+                <div className="page-controls widget-view-panel__record-nav">
+                  <button
+                    type="button"
+                    className="icon-btn"
+                    aria-label="Next record"
+                    title="Next record"
+                    disabled={!canGoNext}
+                    onClick={() => onNavigateRecord(1)}
+                  >
+                    <Icon src={keyboardArrowDown2} size={18} />
+                  </button>
+                  <button
+                    type="button"
+                    className="icon-btn"
+                    aria-label="Previous record"
+                    title="Previous record"
+                    disabled={!canGoPrev}
+                    onClick={() => onNavigateRecord(-1)}
+                  >
+                    <Icon src={keyboardArrowUp} size={18} />
+                  </button>
+                  <div
+                    className="page-index"
+                    aria-label={`Record ${recordIndex + 1} of ${recordCount}`}
+                  >
+                    <span className="page-index__current">{recordIndex + 1}</span>
+                    <span className="page-index__sep">/</span>
+                    <span className="page-index__total">{recordCount}</span>
+                  </div>
+                </div>
+                <span className="widget-view-panel__header-divider" aria-hidden />
+              </>
+            ) : null}
             <button
               type="button"
               className="icon-btn icon-btn--outlined"
@@ -246,7 +342,9 @@ export function WidgetViewPanel({
           </button>
         )}
       </div>
-      <div className="widget-view-panel__body" />
+      <div className="widget-view-panel__body">
+        {widgetId === 'details' ? <ClaimDetailsSplitContent /> : null}
+      </div>
     </aside>
   )
 }
