@@ -78,7 +78,7 @@ const STATUS_ICON: Record<StatusKind, string> = {
 
 export function SubmissionsWidget({ hideHeader = false }: { hideHeader?: boolean }) {
   const { openSide } = useWidgetView()
-  const records = ROWS.map((row, index) => `${row.id} · ${row.created}`)
+  const records = ROWS.map((row) => `${row.id} · ${row.created}`)
 
   function openRecord(index: number) {
     openSide('submissions', 'Submissions', records[index], records)
