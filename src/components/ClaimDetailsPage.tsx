@@ -5,6 +5,7 @@ import {
   assuredWorkload,
   attachFile,
   avatar,
+  checkCircle,
   circle,
   copy,
   docs,
@@ -49,11 +50,13 @@ import { ClaimV2Panel } from './ClaimV2Panel'
 import { DocumentationWidget } from './DocumentationWidget'
 import { PaymentsWidget } from './PaymentsWidget'
 import { RemittancesWidget } from './RemittancesWidget'
+import { ReviewWidget } from './ReviewWidget'
 import { SubmissionsWidget } from './SubmissionsWidget'
 import { useWidgetView, WidgetViewPanel, WidgetViewProvider } from './widgetView'
 
 type ContextNavId =
   | 'summary'
+  | 'review'
   | 'details'
   | 'submissions'
   | 'documentation'
@@ -69,6 +72,7 @@ const CONTEXT_NAV: {
   sparkle?: boolean
 }[] = [
   { id: 'summary', label: 'Claim Summary', sparkle: true },
+  { id: 'review', label: 'Review', icon: checkCircle },
   { id: 'details', label: 'Claim Details', icon: docs },
   { id: 'submissions', label: 'Submissions', icon: sendPanel },
   { id: 'documentation', label: 'Documentation', icon: attachFile },
@@ -449,6 +453,7 @@ function SparkleIcon() {
 
 const SECTION_IDS: ContextNavId[] = [
   'summary',
+  'review',
   'details',
   'submissions',
   'documentation',
@@ -634,6 +639,9 @@ function ClaimContextPanel({
             <ClaimSummary />
           </section>
           <div className="claim-widgets-stack">
+            <section id={sectionDomId('review')} className="claim-section review-widget-wrap">
+              <ReviewWidget />
+            </section>
             <section id={sectionDomId('details')} className="claim-section claim-details-widget-wrap">
               <ClaimDetailsWidget />
             </section>

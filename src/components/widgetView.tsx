@@ -25,6 +25,7 @@ export type WidgetViewId =
   | 'remittances'
   | 'payments'
   | 'activity'
+  | 'review'
 
 export type WidgetViewMode = 'split' | 'full' | 'side'
 

@@ -5,12 +5,20 @@ import { ClaimSummary } from './ClaimSummary'
 import { DocumentationWidget } from './DocumentationWidget'
 import { PaymentsWidget } from './PaymentsWidget'
 import { RemittancesWidget } from './RemittancesWidget'
+import { ReviewWidget } from './ReviewWidget'
 import { SubmissionsWidget } from './SubmissionsWidget'
 import { WidgetViewButtons, type WidgetViewId } from './widgetView'
 
-type V2TabId = 'activity' | 'submissions' | 'remittances' | 'attachments' | 'payments'
+type V2TabId =
+  | 'review'
+  | 'activity'
+  | 'submissions'
+  | 'remittances'
+  | 'attachments'
+  | 'payments'
 
 const V2_TABS: { id: V2TabId; label: string }[] = [
+  { id: 'review', label: 'Review' },
   { id: 'activity', label: 'Activity' },
   { id: 'submissions', label: 'Submissions' },
   { id: 'remittances', label: 'Remittances' },
@@ -18,9 +26,8 @@ const V2_TABS: { id: V2TabId; label: string }[] = [
   { id: 'payments', label: 'Payments' },
 ]
 
-const TAB_VIEW: Partial<
-  Record<V2TabId, { widgetId: WidgetViewId; title: string }>
-> = {
+const TAB_VIEW: Partial<Record<V2TabId, { widgetId: WidgetViewId; title: string }>> = {
+  review: { widgetId: 'review', title: 'Review' },
   activity: { widgetId: 'activity', title: 'Activity' },
   submissions: { widgetId: 'submissions', title: 'Submissions' },
   remittances: { widgetId: 'remittances', title: 'Remittances' },
@@ -29,7 +36,7 @@ const TAB_VIEW: Partial<
 }
 
 export function ClaimV2Panel() {
-  const [activeTab, setActiveTab] = useState<V2TabId>('activity')
+  const [activeTab, setActiveTab] = useState<V2TabId>('review')
   const activeView = TAB_VIEW[activeTab]
 
   return (
@@ -70,6 +77,11 @@ export function ClaimV2Panel() {
       </div>
 
       <div className="claim-v2__content" role="tabpanel">
+        {activeTab === 'review' ? (
+          <div className="review-widget-wrap">
+            <ReviewWidget hideHeader />
+          </div>
+        ) : null}
         {activeTab === 'activity' ? (
           <div className="activity-widget-wrap">
             <ActivityWidget hideHeader />
