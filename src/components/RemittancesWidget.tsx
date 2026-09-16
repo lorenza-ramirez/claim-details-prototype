@@ -2,6 +2,7 @@ import {
   submissionsPaid,
   submissionsSortDown,
 } from '../assets/icons'
+import { ClaimWidgetTitle, useClaimWidgetOpen } from './ClaimWidgetCollapse'
 import { useWidgetView, WidgetViewButtons } from './widgetView'
 
 type RemittanceRow = {
@@ -63,6 +64,9 @@ const ROWS: RemittanceRow[] = [
 
 export function RemittancesWidget({ hideHeader = false }: { hideHeader?: boolean }) {
   const { openSide } = useWidgetView()
+  const { open, contentId, toggle, collapsible } = useClaimWidgetOpen()
+  const isOpen = !collapsible || open
+  const showBody = hideHeader || isOpen
   const records = ROWS.map((row) => row.checkNumber)
 
   function openRecord(checkNumber: string) {
@@ -71,16 +75,26 @@ export function RemittancesWidget({ hideHeader = false }: { hideHeader?: boolean
 
   return (
     <section
-      className="remittances-widget"
+      className={
+        isOpen || hideHeader
+          ? 'remittances-widget'
+          : 'remittances-widget claim-widget--collapsed'
+      }
       {...(hideHeader
         ? { 'aria-label': 'Remittances' }
         : { 'aria-labelledby': 'remittances-widget-title' })}
     >
       {hideHeader ? null : (
         <header className="remittances-widget__title-row">
-          <h3 id="remittances-widget-title" className="remittances-widget__title">
-            Remittances
-          </h3>
+          <ClaimWidgetTitle
+            collapsible={collapsible}
+            open={open}
+            onToggle={toggle}
+            title="Remittances"
+            titleId="remittances-widget-title"
+            titleClassName="remittances-widget__title"
+            controlsId={contentId}
+          />
           <WidgetViewButtons
             widgetId="remittances"
             title="Remittances"
@@ -89,7 +103,8 @@ export function RemittancesWidget({ hideHeader = false }: { hideHeader?: boolean
         </header>
       )}
 
-      <div className="remittances-widget__table-wrap">
+      {showBody ? (
+      <div id={contentId} className="remittances-widget__table-wrap">
         <table className="remittances-widget__table">
           <thead>
             <tr>
@@ -201,6 +216,7 @@ export function RemittancesWidget({ hideHeader = false }: { hideHeader?: boolean
           </tbody>
         </table>
       </div>
+      ) : null}
     </section>
   )
 }

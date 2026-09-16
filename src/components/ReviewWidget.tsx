@@ -3,7 +3,6 @@ import {
   paymentsDangerous,
   restartAlt,
   reviewCelebration,
-  reviewDocumentScanner,
   reviewDocumentScannerWhite,
   reviewNotifications,
   reviewOpenInNew,
@@ -11,6 +10,7 @@ import {
   reviewSkipNext,
   reviewWarning,
 } from '../assets/icons'
+import { ClaimWidgetTitle, useClaimWidgetOpen } from './ClaimWidgetCollapse'
 import { WidgetViewButtons } from './widgetView'
 
 export type ReviewStage = 'idle' | 'progress' | 'errors' | 'passed'
@@ -180,6 +180,9 @@ export function ReviewWidget({
   const [skipped, setSkipped] = useState<Record<string, boolean>>({})
   const [checkIndex, setCheckIndex] = useState(0)
   const runCountRef = useRef(0)
+  const { open, contentId, toggle, collapsible } = useClaimWidgetOpen()
+  const isOpen = !collapsible || open
+  const showBody = hideHeader || isOpen
 
   useEffect(() => {
     if (stage !== 'progress') {
@@ -219,19 +222,28 @@ export function ReviewWidget({
 
   return (
     <section
-      className={`review-widget review-widget--${stage}`}
+      className={[
+        'review-widget',
+        `review-widget--${stage}`,
+        isOpen || hideHeader ? '' : 'claim-widget--collapsed',
+      ]
+        .filter(Boolean)
+        .join(' ')}
       {...(hideHeader
         ? { 'aria-label': 'Review' }
         : { 'aria-labelledby': 'review-widget-title' })}
     >
       {hideHeader ? null : (
         <header className="review-widget__title-row">
-          <span className="review-widget__spot" aria-hidden>
-            <Icon src={reviewDocumentScanner} size={16} />
-          </span>
-          <h3 id="review-widget-title" className="review-widget__title">
-            Review
-          </h3>
+          <ClaimWidgetTitle
+            collapsible={collapsible}
+            open={open}
+            onToggle={toggle}
+            title="Review"
+            titleId="review-widget-title"
+            titleClassName="review-widget__title"
+            controlsId={contentId}
+          />
           <WidgetViewButtons
             widgetId="review"
             title="Review"
@@ -240,7 +252,8 @@ export function ReviewWidget({
         </header>
       )}
 
-      <div className="review-widget__body">
+      {showBody ? (
+      <div id={contentId} className="review-widget__body">
         {stage === 'idle' ? (
           <div className="review-banner review-banner--idle">
             <Icon src={reviewSave} size={22} />
@@ -332,6 +345,7 @@ export function ReviewWidget({
           </div>
         ) : null}
       </div>
+      ) : null}
     </section>
   )
 }

@@ -4,6 +4,7 @@ import {
   submissionsSortDown,
   tune,
 } from '../assets/icons'
+import { ClaimWidgetTitle, useClaimWidgetOpen } from './ClaimWidgetCollapse'
 import { useWidgetView, WidgetViewButtons } from './widgetView'
 
 type DocCategory = 'all' | 'patient' | 'chartNote' | 'medicalFile' | 'fax'
@@ -154,6 +155,9 @@ export function DocumentationWidget({
 }) {
   const [filter, setFilter] = useState<DocCategory>('all')
   const { openSide } = useWidgetView()
+  const { open, contentId, toggle, collapsible } = useClaimWidgetOpen()
+  const isOpen = !collapsible || open
+  const showBody = hideHeader || isOpen
 
   const rows = useMemo(
     () => (filter === 'all' ? ROWS : ROWS.filter((row) => row.category === filter)),
@@ -167,16 +171,26 @@ export function DocumentationWidget({
 
   return (
     <section
-      className="documentation-widget"
+      className={
+        isOpen || hideHeader
+          ? 'documentation-widget'
+          : 'documentation-widget claim-widget--collapsed'
+      }
       {...(hideHeader
         ? { 'aria-label': title }
         : { 'aria-labelledby': 'documentation-widget-title' })}
     >
       {hideHeader ? null : (
         <header className="documentation-widget__title-row">
-          <h3 id="documentation-widget-title" className="documentation-widget__title">
-            {title}
-          </h3>
+          <ClaimWidgetTitle
+            collapsible={collapsible}
+            open={open}
+            onToggle={toggle}
+            title={title}
+            titleId="documentation-widget-title"
+            titleClassName="documentation-widget__title"
+            controlsId={contentId}
+          />
           <WidgetViewButtons
             widgetId="documentation"
             title={title}
@@ -185,6 +199,8 @@ export function DocumentationWidget({
         </header>
       )}
 
+      {showBody ? (
+      <div id={contentId} className="claim-widget__body">
       <div className="documentation-widget__toolbar">
         <div className="documentation-widget__tabs" role="tablist" aria-label="Document categories">
           {FILTERS.map((item) => {
@@ -292,6 +308,8 @@ export function DocumentationWidget({
           </tbody>
         </table>
       </div>
+      </div>
+      ) : null}
     </section>
   )
 }

@@ -42,11 +42,17 @@ import {
   speaking,
   supervisorAccount,
   tune,
+  unfoldLess,
+  unfoldMore,
 } from '../assets/icons'
 import { ActivityWidget } from './ActivityWidget'
 import { ClaimDetailsWidget } from './ClaimDetailsWidget'
 import { ClaimSummary } from './ClaimSummary'
 import { ClaimV2Panel } from './ClaimV2Panel'
+import {
+  ClaimWidgetsCollapseProvider,
+  useClaimWidgetsCollapseActions,
+} from './ClaimWidgetCollapse'
 import { DocumentationWidget } from './DocumentationWidget'
 import { PaymentsWidget } from './PaymentsWidget'
 import { RemittancesWidget } from './RemittancesWidget'
@@ -331,39 +337,38 @@ function GlobalHeader({
   )
 }
 
+type ClaimVersion = 'current' | 'v1' | 'v2'
+
 function VersionToggle({
   value,
   onChange,
 }: {
-  value: 'v1' | 'v2'
-  onChange: (value: 'v1' | 'v2') => void
+  value: ClaimVersion
+  onChange: (value: ClaimVersion) => void
 }) {
   return (
     <div className="version-toggle" role="group" aria-label="Claim version">
-      <button
-        type="button"
-        className={
-          value === 'v1'
-            ? 'version-toggle__item version-toggle__item--active'
-            : 'version-toggle__item'
-        }
-        aria-pressed={value === 'v1'}
-        onClick={() => onChange('v1')}
-      >
-        V1
-      </button>
-      <button
-        type="button"
-        className={
-          value === 'v2'
-            ? 'version-toggle__item version-toggle__item--active'
-            : 'version-toggle__item'
-        }
-        aria-pressed={value === 'v2'}
-        onClick={() => onChange('v2')}
-      >
-        V2
-      </button>
+      {(
+        [
+          ['current', 'Current'],
+          ['v1', 'V1'],
+          ['v2', 'V2'],
+        ] as const
+      ).map(([id, label]) => (
+        <button
+          key={id}
+          type="button"
+          className={
+            value === id
+              ? 'version-toggle__item version-toggle__item--active'
+              : 'version-toggle__item'
+          }
+          aria-pressed={value === id}
+          onClick={() => onChange(id)}
+        >
+          {label}
+        </button>
+      ))}
     </div>
   )
 }
@@ -374,8 +379,8 @@ function ClaimPageHeader({
   fullViewTitle,
   onExitFullView,
 }: {
-  version: 'v1' | 'v2'
-  onVersionChange: (value: 'v1' | 'v2') => void
+  version: ClaimVersion
+  onVersionChange: (value: ClaimVersion) => void
   fullViewTitle?: string | null
   onExitFullView?: () => void
 }) {
@@ -466,21 +471,107 @@ function sectionDomId(id: ContextNavId) {
   return `claim-section-${id}`
 }
 
+function widgetIdToNavId(widgetId: string | undefined): ContextNavId | null {
+  if (!widgetId) return null
+  if (SECTION_IDS.includes(widgetId as ContextNavId)) return widgetId as ContextNavId
+  return null
+}
+
+function ContextIconBar({
+  active,
+  onSelect,
+}: {
+  active: ContextNavId
+  onSelect: (id: ContextNavId) => void
+}) {
+  return (
+    <nav className="context-icon-bar" aria-label="Claim sections">
+      {CONTEXT_NAV.map((item) => {
+        const isActive = active === item.id
+        return (
+          <button
+            key={item.id}
+            type="button"
+            className={
+              isActive
+                ? 'context-icon-bar__item context-icon-bar__item--active'
+                : 'context-icon-bar__item'
+            }
+            aria-label={item.label}
+            title={item.label}
+            aria-current={isActive ? 'true' : undefined}
+            onClick={() => onSelect(item.id)}
+          >
+            {item.sparkle ? <SparkleIcon /> : <Icon src={item.icon!} size={20} />}
+            {item.badge != null ? (
+              <span className="context-icon-bar__badge">{item.badge}</span>
+            ) : null}
+          </button>
+        )
+      })}
+    </nav>
+  )
+}
+
+function ClaimContextCollapseAllButton() {
+  const { collapseAll, expandAll, anyOpen } = useClaimWidgetsCollapseActions()
+
+  return (
+    <button
+      type="button"
+      className="icon-btn icon-btn--outlined"
+      aria-label={anyOpen ? 'Collapse all widgets' : 'Expand all widgets'}
+      title={anyOpen ? 'Collapse all' : 'Expand all'}
+      onClick={() => {
+        if (anyOpen) collapseAll()
+        else expandAll()
+      }}
+    >
+      <Icon src={anyOpen ? unfoldLess : unfoldMore} size={20} />
+    </button>
+  )
+}
+
+function ClaimContextHeaderTools() {
+  return (
+    <div className="claim-context-section-header__tools">
+      <ClaimContextCollapseAllButton />
+      <button type="button" className="icon-btn icon-btn--outlined" aria-label="Tune claim context">
+        <Icon src={tune} size={20} />
+      </button>
+    </div>
+  )
+}
+
+function ClaimContextSectionHeader() {
+  return (
+    <div className="claim-context-section-header-wrap">
+      <header className="claim-context-section-header">
+        <h2 className="claim-context-section-header__title">Claim Context</h2>
+        <ClaimContextHeaderTools />
+      </header>
+    </div>
+  )
+}
+
 function ClaimContextPanel({
   active,
   onSelect,
   navCollapsed,
   onToggleNav,
+  layout = 'nav',
 }: {
   active: ContextNavId
   onSelect: (id: ContextNavId) => void
   navCollapsed: boolean
   onToggleNav: () => void
+  layout?: 'nav' | 'iconBar'
 }) {
   const canvasRef = useRef<HTMLDivElement>(null)
   const flyoutCloseTimer = useRef<number | null>(null)
   const [navFlyoutOpen, setNavFlyoutOpen] = useState(false)
   const activityBadge = CONTEXT_NAV.find((item) => item.id === 'activity')?.badge
+  const isIconBar = layout === 'iconBar'
 
   useEffect(() => {
     const root = canvasRef.current
@@ -513,8 +604,8 @@ function ClaimContextPanel({
   }, [onSelect])
 
   useEffect(() => {
-    if (!navCollapsed) setNavFlyoutOpen(false)
-  }, [navCollapsed])
+    if (!navCollapsed || isIconBar) setNavFlyoutOpen(false)
+  }, [navCollapsed, isIconBar])
 
   useEffect(() => {
     return () => {
@@ -568,6 +659,52 @@ function ClaimContextPanel({
         </button>
       )
     })
+  }
+
+  const canvas = (
+    <div ref={canvasRef} className="claim-context__canvas" aria-label="Claim content">
+      <section id={sectionDomId('summary')} className="claim-section">
+        <ClaimSummary />
+      </section>
+      <div className="claim-widgets-stack">
+        <section id={sectionDomId('review')} className="claim-section review-widget-wrap">
+          <ReviewWidget />
+        </section>
+        {isIconBar ? <ClaimContextSectionHeader /> : null}
+        <section id={sectionDomId('details')} className="claim-section claim-details-widget-wrap">
+          <ClaimDetailsWidget />
+        </section>
+        <section id={sectionDomId('submissions')} className="claim-section submissions-widget-wrap">
+          <SubmissionsWidget />
+        </section>
+        <section
+          id={sectionDomId('documentation')}
+          className="claim-section documentation-widget-wrap"
+        >
+          <DocumentationWidget />
+        </section>
+        <section id={sectionDomId('remittances')} className="claim-section remittances-widget-wrap">
+          <RemittancesWidget />
+        </section>
+        <section id={sectionDomId('payments')} className="claim-section payments-widget-wrap">
+          <PaymentsWidget />
+        </section>
+        <section id={sectionDomId('activity')} className="claim-section activity-widget-wrap">
+          <ActivityWidget />
+        </section>
+      </div>
+    </div>
+  )
+
+  if (isIconBar) {
+    return (
+      <div className="claim-context">
+        <div className="claim-context__body">
+          <ContextIconBar active={active} onSelect={handleNavSelect} />
+          {canvas}
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -633,47 +770,7 @@ function ClaimContextPanel({
             {renderNavItems()}
           </nav>
         ) : null}
-
-        <div ref={canvasRef} className="claim-context__canvas" aria-label="Claim content">
-          <section id={sectionDomId('summary')} className="claim-section">
-            <ClaimSummary />
-          </section>
-          <div className="claim-widgets-stack">
-            <section id={sectionDomId('review')} className="claim-section review-widget-wrap">
-              <ReviewWidget />
-            </section>
-            <section id={sectionDomId('details')} className="claim-section claim-details-widget-wrap">
-              <ClaimDetailsWidget />
-            </section>
-            <section
-              id={sectionDomId('submissions')}
-              className="claim-section submissions-widget-wrap"
-            >
-              <SubmissionsWidget />
-            </section>
-            <section
-              id={sectionDomId('documentation')}
-              className="claim-section documentation-widget-wrap"
-            >
-              <DocumentationWidget />
-            </section>
-            <section
-              id={sectionDomId('remittances')}
-              className="claim-section remittances-widget-wrap"
-            >
-              <RemittancesWidget />
-            </section>
-            <section
-              id={sectionDomId('payments')}
-              className="claim-section payments-widget-wrap"
-            >
-              <PaymentsWidget />
-            </section>
-            <section id={sectionDomId('activity')} className="claim-section activity-widget-wrap">
-              <ActivityWidget />
-            </section>
-          </div>
-        </div>
+        {canvas}
       </div>
     </div>
   )
@@ -733,23 +830,181 @@ function PropertiesPanel({ collapsed = false }: { collapsed?: boolean }) {
 }
 
 export function ClaimDetailsPage() {
+  const [version, setVersion] = useState<ClaimVersion>('current')
   return (
-    <WidgetViewProvider>
-      <ClaimDetailsPageInner />
+    <WidgetViewProvider allowDualSplit={version === 'current'}>
+      <ClaimDetailsPageInner version={version} onVersionChange={setVersion} />
     </WidgetViewProvider>
   )
 }
 
-function ClaimDetailsPageInner() {
+function ClaimDetailsPageInner({
+  version,
+  onVersionChange,
+}: {
+  version: ClaimVersion
+  onVersionChange: (value: ClaimVersion) => void
+}) {
   const [activeNav, setActiveNav] = useState<ContextNavId>('summary')
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [contextNavCollapsed, setContextNavCollapsed] = useState(false)
-  const [version, setVersion] = useState<'v1' | 'v2'>('v1')
-  const { view, close, openSide, openSplit, openFull, navigateRecord } = useWidgetView()
+  const { view, close, openSide, openSplit, openFull, navigateRecord, closeSplitPane } =
+    useWidgetView()
 
   const isFull = view?.mode === 'full'
   const isSplit = view?.mode === 'split'
   const isSide = view?.mode === 'side'
+  const isDualSplit = isSplit && view?.secondary != null
+  const fullViewNavId = widgetIdToNavId(view?.widgetId)
+
+  function selectContextSection(id: ContextNavId) {
+    setActiveNav(id)
+    if (isFull) close()
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        document.getElementById(sectionDomId(id))?.scrollIntoView({
+          behavior: 'smooth',
+          block: 'start',
+        })
+      })
+    })
+  }
+
+  function renderSideOverlay() {
+    if (!isSide || !view) return null
+    return (
+      <>
+        <button
+          type="button"
+          className="widget-view-backdrop"
+          aria-label="Close side view"
+          onClick={close}
+        />
+        <WidgetViewPanel
+          mode="side"
+          title={view.recordTitle ?? view.title}
+          widgetId={view.widgetId}
+          onClose={close}
+          onOpenSplit={() => openSplit(view.widgetId, view.title)}
+          onOpenFull={() => openFull(view.widgetId, view.title)}
+          recordIndex={view.recordIndex}
+          recordCount={view.records?.length}
+          onNavigateRecord={navigateRecord}
+        />
+      </>
+    )
+  }
+
+  function renderSplitPanel() {
+    if (!isSplit || !view) return null
+    return (
+      <WidgetViewPanel
+        mode="split"
+        title={view.title}
+        widgetId={view.widgetId}
+        onClose={() => closeSplitPane('primary')}
+        onOpenSide={() => openSide(view.widgetId, view.title)}
+      />
+    )
+  }
+
+  function renderDualSplitPanels() {
+    if (!isDualSplit || !view?.secondary) return null
+    return (
+      <>
+        <WidgetViewPanel
+          mode="split"
+          title={view.title}
+          widgetId={view.widgetId}
+          onClose={() => closeSplitPane('primary')}
+          onOpenSide={() => openSide(view.widgetId, view.title)}
+        />
+        <WidgetViewPanel
+          mode="split"
+          title={view.secondary.title}
+          widgetId={view.secondary.widgetId}
+          onClose={() => closeSplitPane('secondary')}
+          onOpenSide={() => openSide(view.secondary!.widgetId, view.secondary!.title)}
+        />
+      </>
+    )
+  }
+
+  let stageContent: ReactNode
+  if (version === 'current') {
+    stageContent = (
+      <>
+        {isFull && view ? (
+          <div className="claim-context claim-context--full-view">
+            <div className="claim-context__body">
+              <ContextIconBar
+                active={fullViewNavId ?? activeNav}
+                onSelect={selectContextSection}
+              />
+              <WidgetViewPanel
+                mode="full"
+                title={view.title}
+                widgetId={view.widgetId}
+                onClose={close}
+              />
+            </div>
+          </div>
+        ) : isDualSplit ? (
+          renderDualSplitPanels()
+        ) : (
+          <>
+            <ClaimContextPanel
+              active={activeNav}
+              onSelect={setActiveNav}
+              navCollapsed={contextNavCollapsed}
+              onToggleNav={() => setContextNavCollapsed((value) => !value)}
+              layout="iconBar"
+            />
+            {renderSplitPanel()}
+          </>
+        )}
+        <PropertiesPanel collapsed={isSplit} />
+        {renderSideOverlay()}
+      </>
+    )
+  } else if (isFull && view) {
+    stageContent = (
+      <>
+        <WidgetViewPanel
+          mode="full"
+          title={view.title}
+          widgetId={view.widgetId}
+          onClose={close}
+        />
+        <PropertiesPanel collapsed={isSplit} />
+        {renderSideOverlay()}
+      </>
+    )
+  } else if (version === 'v2') {
+    stageContent = (
+      <>
+        <ClaimV2Panel />
+        {renderSplitPanel()}
+        <PropertiesPanel collapsed={isSplit} />
+        {renderSideOverlay()}
+      </>
+    )
+  } else {
+    stageContent = (
+      <>
+        <ClaimContextPanel
+          active={activeNav}
+          onSelect={setActiveNav}
+          navCollapsed={contextNavCollapsed}
+          onToggleNav={() => setContextNavCollapsed((value) => !value)}
+          layout="nav"
+        />
+        {renderSplitPanel()}
+        <PropertiesPanel collapsed={isSplit} />
+        {renderSideOverlay()}
+      </>
+    )
+  }
 
   return (
     <div className="app-shell">
@@ -761,68 +1016,31 @@ function ClaimDetailsPageInner() {
         />
         <div className="content-row">
           <section className="app-canvas" aria-label="Claim details">
-            <ClaimPageHeader
-              version={version}
-              onVersionChange={setVersion}
-              fullViewTitle={isFull ? view.title : null}
-              onExitFullView={close}
-            />
-            <div className="canvas-body">
-              <div className="canvas-stage">
-                {isFull && view ? (
-                  <WidgetViewPanel
-                    mode="full"
-                    title={view.title}
-                    widgetId={view.widgetId}
-                    onClose={close}
-                  />
-                ) : (
-                  <>
-                    {version === 'v1' ? (
-                      <ClaimContextPanel
-                        active={activeNav}
-                        onSelect={setActiveNav}
-                        navCollapsed={contextNavCollapsed}
-                        onToggleNav={() => setContextNavCollapsed((value) => !value)}
-                      />
-                    ) : (
-                      <ClaimV2Panel />
-                    )}
-                    {isSplit && view ? (
-                      <WidgetViewPanel
-                        mode="split"
-                        title={view.title}
-                        widgetId={view.widgetId}
-                        onClose={close}
-                        onOpenSide={() => openSide(view.widgetId, view.title)}
-                      />
-                    ) : null}
-                  </>
-                )}
-                <PropertiesPanel collapsed={isSplit} />
-                {isSide && view ? (
-                  <>
-                    <button
-                      type="button"
-                      className="widget-view-backdrop"
-                      aria-label="Close side view"
-                      onClick={close}
-                    />
-                    <WidgetViewPanel
-                      mode="side"
-                      title={view.recordTitle ?? view.title}
-                      widgetId={view.widgetId}
-                      onClose={close}
-                      onOpenSplit={() => openSplit(view.widgetId, view.title)}
-                      onOpenFull={() => openFull(view.widgetId, view.title)}
-                      recordIndex={view.recordIndex}
-                      recordCount={view.records?.length}
-                      onNavigateRecord={navigateRecord}
-                    />
-                  </>
-                ) : null}
-              </div>
-            </div>
+            {version === 'current' ? (
+              <ClaimWidgetsCollapseProvider>
+                <ClaimPageHeader
+                  version={version}
+                  onVersionChange={onVersionChange}
+                  fullViewTitle={isFull ? view?.title ?? null : null}
+                  onExitFullView={close}
+                />
+                <div className="canvas-body">
+                  <div className="canvas-stage">{stageContent}</div>
+                </div>
+              </ClaimWidgetsCollapseProvider>
+            ) : (
+              <>
+                <ClaimPageHeader
+                  version={version}
+                  onVersionChange={onVersionChange}
+                  fullViewTitle={isFull ? view?.title ?? null : null}
+                  onExitFullView={close}
+                />
+                <div className="canvas-body">
+                  <div className="canvas-stage">{stageContent}</div>
+                </div>
+              </>
+            )}
           </section>
         </div>
       </div>

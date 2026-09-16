@@ -1,12 +1,15 @@
+import { useState } from 'react'
 import {
   submissionsError,
   submissionsPaid,
   submissionsRejected,
   submissionsSortDown,
 } from '../assets/icons'
+import { AppealPackageModal } from './AppealPackageModal'
+import { ClaimWidgetTitle, useClaimWidgetOpen } from './ClaimWidgetCollapse'
 import { useWidgetView, WidgetViewButtons } from './widgetView'
 
-type StatusKind = 'error' | 'paid' | 'rejected'
+type StatusKind = 'error' | 'paid' | 'denied'
 type IndexKind = 'primary' | 'secondary'
 
 type SubmissionRow = {
@@ -58,8 +61,8 @@ const ROWS: SubmissionRow[] = [
     id: 'ARC680055',
     created: '1/10/2026',
     submitted: '1/10/2026',
-    status: 'rejected',
-    statusLabel: 'Rejected',
+    status: 'denied',
+    statusLabel: 'Denied',
     charges: '$234.34',
     index: 'primary',
     payer: 'United Healthcare',
@@ -73,11 +76,15 @@ const ROWS: SubmissionRow[] = [
 const STATUS_ICON: Record<StatusKind, string> = {
   error: submissionsError,
   paid: submissionsPaid,
-  rejected: submissionsRejected,
+  denied: submissionsRejected,
 }
 
 export function SubmissionsWidget({ hideHeader = false }: { hideHeader?: boolean }) {
+  const [appealOpen, setAppealOpen] = useState(false)
   const { openSide } = useWidgetView()
+  const { open, contentId, toggle, collapsible } = useClaimWidgetOpen()
+  const isOpen = !collapsible || open
+  const showBody = hideHeader || isOpen
   const records = ROWS.map((row) => `${row.id} · ${row.created}`)
 
   function openRecord(index: number) {
@@ -86,16 +93,26 @@ export function SubmissionsWidget({ hideHeader = false }: { hideHeader?: boolean
 
   return (
     <section
-      className="submissions-widget"
+      className={
+        isOpen || hideHeader
+          ? 'submissions-widget'
+          : 'submissions-widget claim-widget--collapsed'
+      }
       {...(hideHeader
         ? { 'aria-label': 'Submissions' }
         : { 'aria-labelledby': 'submissions-widget-title' })}
     >
       {hideHeader ? null : (
         <header className="submissions-widget__title-row">
-          <h3 id="submissions-widget-title" className="submissions-widget__title">
-            Submissions
-          </h3>
+          <ClaimWidgetTitle
+            collapsible={collapsible}
+            open={open}
+            onToggle={toggle}
+            title="Submissions"
+            titleId="submissions-widget-title"
+            titleClassName="submissions-widget__title"
+            controlsId={contentId}
+          />
           <WidgetViewButtons
             widgetId="submissions"
             title="Submissions"
@@ -104,7 +121,8 @@ export function SubmissionsWidget({ hideHeader = false }: { hideHeader?: boolean
         </header>
       )}
 
-      <div className="submissions-widget__table-wrap">
+      {showBody ? (
+      <div id={contentId} className="submissions-widget__table-wrap">
         <table className="submissions-widget__table">
           <thead>
             <tr>
@@ -210,7 +228,10 @@ export function SubmissionsWidget({ hideHeader = false }: { hideHeader?: boolean
                         : 'submissions-widget__appeal submissions-widget__appeal--disabled'
                     }
                     disabled={!row.appealEnabled}
-                    onClick={(event) => event.stopPropagation()}
+                    onClick={(event) => {
+                      event.stopPropagation()
+                      setAppealOpen(true)
+                    }}
                   >
                     Appeal
                   </button>
@@ -220,6 +241,8 @@ export function SubmissionsWidget({ hideHeader = false }: { hideHeader?: boolean
           </tbody>
         </table>
       </div>
+      ) : null}
+      {appealOpen ? <AppealPackageModal onClose={() => setAppealOpen(false)} /> : null}
     </section>
   )
 }

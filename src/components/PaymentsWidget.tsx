@@ -10,6 +10,7 @@ import {
   tune,
 } from '../assets/icons'
 import { WidgetViewButtons, useWidgetView } from './widgetView'
+import { ClaimWidgetTitle, useClaimWidgetOpen } from './ClaimWidgetCollapse'
 
 type PaymentsTab = 'perPayer' | 'adjudication'
 
@@ -331,6 +332,9 @@ export function PaymentsWidget({ hideHeader = false }: { hideHeader?: boolean })
   const [primaryOpen, setPrimaryOpen] = useState(true)
   const [secondaryOpen, setSecondaryOpen] = useState(false)
   const { openSide } = useWidgetView()
+  const { open, contentId, toggle, collapsible } = useClaimWidgetOpen()
+  const isOpen = !collapsible || open
+  const showBody = hideHeader || isOpen
   const payerRecords = ['Primary', 'Secondary', 'Total']
 
   function openPayer(label: string) {
@@ -339,16 +343,26 @@ export function PaymentsWidget({ hideHeader = false }: { hideHeader?: boolean })
 
   return (
     <section
-      className="payments-widget"
+      className={
+        isOpen || hideHeader
+          ? 'payments-widget'
+          : 'payments-widget claim-widget--collapsed'
+      }
       {...(hideHeader
         ? { 'aria-label': 'Payments' }
         : { 'aria-labelledby': 'payments-widget-title' })}
     >
       {hideHeader ? null : (
         <header className="payments-widget__title-row">
-          <h3 id="payments-widget-title" className="payments-widget__title">
-            Payments
-          </h3>
+          <ClaimWidgetTitle
+            collapsible={collapsible}
+            open={open}
+            onToggle={toggle}
+            title="Payments"
+            titleId="payments-widget-title"
+            titleClassName="payments-widget__title"
+            controlsId={contentId}
+          />
           <WidgetViewButtons
             widgetId="payments"
             title="Payments"
@@ -357,6 +371,8 @@ export function PaymentsWidget({ hideHeader = false }: { hideHeader?: boolean })
         </header>
       )}
 
+      {showBody ? (
+      <div id={contentId} className="claim-widget__body">
       <div className="payments-widget__toolbar">
         <div className="payments-widget__tabs" role="tablist" aria-label="Payments views">
           <button
@@ -565,6 +581,8 @@ export function PaymentsWidget({ hideHeader = false }: { hideHeader?: boolean })
           <p>Adjudication Detail view coming soon.</p>
         </div>
       )}
+      </div>
+      ) : null}
     </section>
   )
 }

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { submissionsPaid, touchApp } from '../assets/icons'
+import { ClaimWidgetTitle, useClaimWidgetOpen } from './ClaimWidgetCollapse'
 import { WidgetViewButtons } from './widgetView'
 
 /** Synthetic demo field values from Figma — not real PHI/PII. */
@@ -272,12 +273,26 @@ function InsurancesField({ value }: { value: string }) {
 }
 
 export function ClaimDetailsWidget() {
+  const { open, contentId, toggle, collapsible } = useClaimWidgetOpen()
+  const isOpen = !collapsible || open
+
   return (
-    <section className="claim-details-widget" aria-labelledby="claim-details-widget-title">
+    <section
+      className={
+        isOpen ? 'claim-details-widget' : 'claim-details-widget claim-widget--collapsed'
+      }
+      aria-labelledby="claim-details-widget-title"
+    >
       <header className="claim-details-widget__title-row">
-        <h3 id="claim-details-widget-title" className="claim-details-widget__title">
-          Claim Details
-        </h3>
+        <ClaimWidgetTitle
+          collapsible={collapsible}
+          open={open}
+          onToggle={toggle}
+          title="Claim Details"
+          titleId="claim-details-widget-title"
+          titleClassName="claim-details-widget__title"
+          controlsId={contentId}
+        />
         <WidgetViewButtons
           widgetId="details"
           title="Claim Details"
@@ -285,6 +300,8 @@ export function ClaimDetailsWidget() {
         />
       </header>
 
+      {isOpen ? (
+      <div id={contentId} className="claim-widget__body">
       <div className="claim-details-widget__section">
         <div className="claim-details-widget__grid">
           <div className="claim-details-widget__col">
@@ -347,6 +364,8 @@ export function ClaimDetailsWidget() {
           Grouping, Values &amp; Conditions)
         </span>
       </p>
+      </div>
+      ) : null}
     </section>
   )
 }

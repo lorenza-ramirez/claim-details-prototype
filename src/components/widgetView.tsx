@@ -2,6 +2,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useState,
   type ReactNode,
@@ -29,10 +30,17 @@ export type WidgetViewId =
 
 export type WidgetViewMode = 'split' | 'full' | 'side'
 
+export type WidgetViewPane = {
+  widgetId: WidgetViewId
+  title: string
+}
+
 export type WidgetViewState = {
   mode: WidgetViewMode
   widgetId: WidgetViewId
   title: string
+  /** Second split pane when dual-split is active (Current version). */
+  secondary?: WidgetViewPane
   /** Optional record label when opening from a table row. */
   recordTitle?: string
   /** Sibling record labels for side-view prev/next navigation. */
@@ -52,16 +60,60 @@ type WidgetViewContextValue = {
   ) => void
   navigateRecord: (delta: -1 | 1) => void
   close: () => void
+  closeSplitPane: (pane: 'primary' | 'secondary') => void
 }
 
 const WidgetViewContext = createContext<WidgetViewContextValue | null>(null)
 
-export function WidgetViewProvider({ children }: { children: ReactNode }) {
+export function WidgetViewProvider({
+  children,
+  allowDualSplit = false,
+}: {
+  children: ReactNode
+  allowDualSplit?: boolean
+}) {
   const [view, setView] = useState<WidgetViewState | null>(null)
 
-  const openSplit = useCallback((widgetId: WidgetViewId, title: string) => {
-    setView({ mode: 'split', widgetId, title })
-  }, [])
+  useEffect(() => {
+    if (allowDualSplit) return
+    setView((current) => {
+      if (!current?.secondary) return current
+      return {
+        mode: 'split',
+        widgetId: current.widgetId,
+        title: current.title,
+      }
+    })
+  }, [allowDualSplit])
+
+  const openSplit = useCallback(
+    (widgetId: WidgetViewId, title: string) => {
+      setView((current) => {
+        if (
+          allowDualSplit &&
+          current?.mode === 'split' &&
+          current.widgetId !== widgetId
+        ) {
+          if (current.secondary?.widgetId === widgetId) {
+            return current
+          }
+          return {
+            mode: 'split',
+            widgetId: current.widgetId,
+            title: current.title,
+            secondary: { widgetId, title },
+          }
+        }
+
+        if (current?.mode === 'split' && current.widgetId === widgetId && !current.secondary) {
+          return current
+        }
+
+        return { mode: 'split', widgetId, title }
+      })
+    },
+    [allowDualSplit],
+  )
 
   const openFull = useCallback((widgetId: WidgetViewId, title: string) => {
     setView({ mode: 'full', widgetId, title })
@@ -107,9 +159,31 @@ export function WidgetViewProvider({ children }: { children: ReactNode }) {
     setView(null)
   }, [])
 
+  const closeSplitPane = useCallback((pane: 'primary' | 'secondary') => {
+    setView((current) => {
+      if (!current || current.mode !== 'split') return current
+      if (pane === 'secondary') {
+        if (!current.secondary) return current
+        return {
+          mode: 'split',
+          widgetId: current.widgetId,
+          title: current.title,
+        }
+      }
+      if (current.secondary) {
+        return {
+          mode: 'split',
+          widgetId: current.secondary.widgetId,
+          title: current.secondary.title,
+        }
+      }
+      return null
+    })
+  }, [])
+
   const value = useMemo(
-    () => ({ view, openSplit, openFull, openSide, navigateRecord, close }),
-    [view, openSplit, openFull, openSide, navigateRecord, close],
+    () => ({ view, openSplit, openFull, openSide, navigateRecord, close, closeSplitPane }),
+    [view, openSplit, openFull, openSide, navigateRecord, close, closeSplitPane],
   )
 
   return <WidgetViewContext.Provider value={value}>{children}</WidgetViewContext.Provider>

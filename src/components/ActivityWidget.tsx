@@ -10,6 +10,7 @@ import {
   activityMinus,
   activityPlus,
 } from '../assets/icons'
+import { ClaimWidgetTitle, useClaimWidgetOpen } from './ClaimWidgetCollapse'
 import { WidgetViewButtons } from './widgetView'
 
 type Adornment =
@@ -225,18 +226,32 @@ function Meta({ viewMore }: { viewMore?: boolean }) {
 }
 
 export function ActivityWidget({ hideHeader = false }: { hideHeader?: boolean }) {
+  const { open, contentId, toggle, collapsible } = useClaimWidgetOpen()
+  const isOpen = !collapsible || open
+  const showBody = hideHeader || isOpen
+
   return (
     <section
-      className="activity-widget"
+      className={
+        isOpen || hideHeader
+          ? 'activity-widget'
+          : 'activity-widget claim-widget--collapsed'
+      }
       {...(hideHeader
         ? { 'aria-label': 'Activity' }
         : { 'aria-labelledby': 'activity-widget-title' })}
     >
       {hideHeader ? null : (
         <header className="activity-widget__title-row">
-          <h3 id="activity-widget-title" className="activity-widget__title">
-            Activity
-          </h3>
+          <ClaimWidgetTitle
+            collapsible={collapsible}
+            open={open}
+            onToggle={toggle}
+            title="Activity"
+            titleId="activity-widget-title"
+            titleClassName="activity-widget__title"
+            controlsId={contentId}
+          />
           <WidgetViewButtons
             widgetId="activity"
             title="Activity"
@@ -245,7 +260,8 @@ export function ActivityWidget({ hideHeader = false }: { hideHeader?: boolean })
         </header>
       )}
 
-      <div className="activity-widget__body">
+      {showBody ? (
+      <div id={contentId} className="activity-widget__body">
         <ol className="activity-widget__list">
           {ITEMS.map((item) => (
             <li
@@ -303,6 +319,7 @@ export function ActivityWidget({ hideHeader = false }: { hideHeader?: boolean })
           </div>
         </div>
       </div>
+      ) : null}
     </section>
   )
 }
