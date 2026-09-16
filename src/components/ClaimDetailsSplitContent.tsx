@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react'
-import { paymentsArrowDropDown, submissionsPaid } from '../assets/icons'
+import { submissionsPaid, widgetArrowDown } from '../assets/icons'
 
 function Icon({
   src,
@@ -94,7 +94,7 @@ function CollapsibleSubsection({
           onClick={onToggle}
         >
           <Icon
-            src={paymentsArrowDropDown}
+            src={widgetArrowDown}
             size={20}
             className={
               open

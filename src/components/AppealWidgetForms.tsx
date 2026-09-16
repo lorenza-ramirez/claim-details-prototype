@@ -1,5 +1,5 @@
 import { useId, useState, type ReactNode } from 'react'
-import appealChevronDown from '../assets/figma/appeal-chevron-down.svg'
+import { widgetArrowDown } from '../assets/icons'
 import appealFieldCalendar from '../assets/figma/appeal-field-calendar.svg'
 import appealFieldClose from '../assets/figma/appeal-field-close.svg'
 import appealFieldDropdown from '../assets/figma/appeal-field-dropdown.svg'
@@ -129,7 +129,7 @@ function AppealFormCard({
       >
         <h3 id={titleId}>{title}</h3>
         <img
-          src={appealChevronDown}
+          src={widgetArrowDown}
           alt=""
           width={20}
           height={20}

@@ -226,7 +226,7 @@ function Meta({ viewMore }: { viewMore?: boolean }) {
 }
 
 export function ActivityWidget({ hideHeader = false }: { hideHeader?: boolean }) {
-  const { open, contentId, toggle, collapsible } = useClaimWidgetOpen()
+  const { open, contentId, toggle, collapsible } = useClaimWidgetOpen(true)
   const isOpen = !collapsible || open
   const showBody = hideHeader || isOpen
 

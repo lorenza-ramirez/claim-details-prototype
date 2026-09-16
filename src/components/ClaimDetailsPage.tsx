@@ -547,7 +547,7 @@ function ClaimContextSectionHeader() {
   return (
     <div className="claim-context-section-header-wrap">
       <header className="claim-context-section-header">
-        <h2 className="claim-context-section-header__title">Claim Context</h2>
+        <h2 className="claim-context-section-header__title">Context</h2>
         <ClaimContextHeaderTools />
       </header>
     </div>
@@ -667,10 +667,10 @@ function ClaimContextPanel({
         <ClaimSummary />
       </section>
       <div className="claim-widgets-stack">
+        {isIconBar ? <ClaimContextSectionHeader /> : null}
         <section id={sectionDomId('review')} className="claim-section review-widget-wrap">
           <ReviewWidget />
         </section>
-        {isIconBar ? <ClaimContextSectionHeader /> : null}
         <section id={sectionDomId('details')} className="claim-section claim-details-widget-wrap">
           <ClaimDetailsWidget />
         </section>
@@ -708,7 +708,7 @@ function ClaimContextPanel({
   }
 
   return (
-    <div className="claim-context">
+    <div className="claim-context claim-context--v1">
       <div className="panel-header">
         <div
           className="panel-header__menu-wrap"
@@ -1016,7 +1016,7 @@ function ClaimDetailsPageInner({
         />
         <div className="content-row">
           <section className="app-canvas" aria-label="Claim details">
-            {version === 'current' ? (
+            {version === 'current' || version === 'v1' ? (
               <ClaimWidgetsCollapseProvider>
                 <ClaimPageHeader
                   version={version}

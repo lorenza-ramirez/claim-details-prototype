@@ -509,7 +509,7 @@ img {
   gap: 8px;
   width: 100%;
   max-width: 1000px;
-  padding: 12px 0;
+  padding: 0;
   box-sizing: border-box;
 }
 
@@ -1417,20 +1417,17 @@ img {
 }
 
 .claim-widget__toggle h3 {
-  flex: 1;
+  flex: 0 1 auto;
   min-width: 0;
-}
-
-.claim-widget__toggle:hover .claim-widget__chevron {
-  opacity: 1;
 }
 
 .claim-widget__chevron {
   flex-shrink: 0;
-  opacity: 0.7;
-  transition:
-    transform 150ms ease,
-    opacity 150ms ease;
+  width: 20px;
+  height: 20px;
+  padding: 0 4px;
+  box-sizing: content-box;
+  transition: transform 150ms ease;
 }
 
 .claim-widget__chevron--open {
@@ -1447,9 +1444,11 @@ img {
 .claim-summary .claim-widget__body {
   max-width: 1000px;
   align-items: center;
+  padding: 0 16px;
+  box-sizing: border-box;
 }
 
-/* Collapsed cards share the same title-row chrome: 8px top/bottom, 16px sides */
+/* Collapsed cards keep the same title-row padding as expanded. */
 .claim-details-widget.claim-widget--collapsed,
 .review-widget.claim-widget--collapsed,
 .activity-widget.claim-widget--collapsed,
@@ -1457,38 +1456,21 @@ img {
 .remittances-widget.claim-widget--collapsed,
 .payments-widget.claim-widget--collapsed,
 .documentation-widget.claim-widget--collapsed {
-  padding: 8px 16px;
-  gap: 0;
-}
-
-.activity-widget.claim-widget--collapsed .activity-widget__title-row,
-.submissions-widget.claim-widget--collapsed .submissions-widget__title-row,
-.remittances-widget.claim-widget--collapsed .remittances-widget__title-row,
-.payments-widget.claim-widget--collapsed .payments-widget__title-row,
-.documentation-widget.claim-widget--collapsed .documentation-widget__title-row,
-.claim-details-widget.claim-widget--collapsed .claim-details-widget__title-row,
-.review-widget.claim-widget--collapsed .review-widget__title-row {
   padding: 0;
-  align-items: center;
-  min-height: 28px;
+  gap: 0;
 }
 
 .claim-summary.claim-widget--collapsed .claim-summary__inner {
-  padding: 12px 16px;
-  gap: 0;
-}
-
-.claim-summary.claim-widget--collapsed .claim-summary__header {
   padding: 0;
-  min-height: 28px;
+  gap: 0;
 }
 
 .claim-summary__inner {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 0;
   align-items: center;
-  padding: 12px 16px;
+  padding: 0 0 12px;
   width: 100%;
   box-sizing: border-box;
   overflow: visible;
@@ -1505,10 +1487,13 @@ img {
 .claim-summary__header {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 8px;
   width: 100%;
   max-width: 1000px;
-  padding: 4px 0;
+  min-height: 40px;
+  padding: 8px 16px;
+  box-sizing: border-box;
 }
 
 .summary-emblem {
@@ -1866,10 +1851,10 @@ img {
 .claim-details-widget {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 0;
   width: 100%;
   max-width: 1000px;
-  padding: 12px 16px;
+  padding: 0;
   box-sizing: border-box;
   background: #ffffff;
   border: 1px solid var(--outline);
@@ -1888,9 +1873,12 @@ img {
 
 .claim-details-widget__title-row {
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: space-between;
   width: 100%;
+  min-height: 40px;
+  padding: 8px 16px;
+  box-sizing: border-box;
 }
 
 .claim-details-widget__title {
@@ -1916,6 +1904,11 @@ img {
 .claim-details-widget:focus-within .claim-details-widget__actions {
   opacity: 1;
   pointer-events: auto;
+}
+
+.claim-details-widget .claim-widget__body {
+  padding: 0 16px 12px;
+  box-sizing: border-box;
 }
 
 .claim-details-widget__section {
@@ -2223,6 +2216,100 @@ button.claim-details-widget__value {
   background: var(--bg-base);
 }
 
+/* —— V1: flat accordion list, no card chrome —— */
+.claim-context--v1 .claim-widgets-stack {
+  gap: 0;
+  padding: 8px 16px 16px;
+}
+
+.claim-context--v1 .claim-widgets-stack > .claim-section {
+  width: 100%;
+  max-width: 1000px;
+}
+
+.claim-context--v1 .review-widget,
+.claim-context--v1 .claim-details-widget,
+.claim-context--v1 .submissions-widget,
+.claim-context--v1 .documentation-widget,
+.claim-context--v1 .remittances-widget,
+.claim-context--v1 .payments-widget,
+.claim-context--v1 .activity-widget {
+  border: 0;
+  border-top: 1px solid var(--outline);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  overflow: visible;
+}
+
+.claim-context--v1 .claim-widgets-stack > .claim-section:first-of-type .review-widget {
+  border-top: 0;
+}
+
+.claim-context--v1 .review-widget:hover,
+.claim-context--v1 .review-widget:focus-within,
+.claim-context--v1 .claim-details-widget:hover,
+.claim-context--v1 .claim-details-widget:focus-within,
+.claim-context--v1 .submissions-widget:hover,
+.claim-context--v1 .submissions-widget:focus-within,
+.claim-context--v1 .documentation-widget:hover,
+.claim-context--v1 .documentation-widget:focus-within,
+.claim-context--v1 .remittances-widget:hover,
+.claim-context--v1 .remittances-widget:focus-within,
+.claim-context--v1 .payments-widget:hover,
+.claim-context--v1 .payments-widget:focus-within,
+.claim-context--v1 .activity-widget:hover,
+.claim-context--v1 .activity-widget:focus-within {
+  background: transparent;
+  box-shadow: none;
+}
+
+.claim-context--v1 .review-widget__title-row,
+.claim-context--v1 .claim-details-widget__title-row,
+.claim-context--v1 .submissions-widget__title-row,
+.claim-context--v1 .documentation-widget__title-row,
+.claim-context--v1 .remittances-widget__title-row,
+.claim-context--v1 .payments-widget__title-row,
+.claim-context--v1 .activity-widget__title-row {
+  min-height: 36px;
+  padding: 6px 0;
+}
+
+.claim-context--v1 .claim-widget__toggle {
+  gap: 8px;
+}
+
+/* Caret leads the label and points right until the section opens. */
+.claim-context--v1 .claim-widget__chevron {
+  order: -1;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  transform: rotate(-90deg);
+}
+
+.claim-context--v1 .claim-widget__chevron--open {
+  transform: rotate(0deg);
+}
+
+.claim-context--v1 .claim-widget__toggle h3 {
+  font-weight: 600;
+}
+
+.claim-context--v1 .claim-widget__body,
+.claim-context--v1 .review-widget__body,
+.claim-context--v1 .activity-widget__body {
+  padding-right: 0;
+  padding-bottom: 12px;
+  padding-left: 24px;
+}
+
+.claim-context--v1 .submissions-widget__table-wrap,
+.claim-context--v1 .remittances-widget__table-wrap {
+  border-top: 0;
+  background: transparent;
+}
+
 .claim-widgets-stack .claim-details-widget-wrap,
 .claim-widgets-stack .activity-widget-wrap,
 .claim-widgets-stack .review-widget-wrap {
@@ -2244,7 +2331,7 @@ button.claim-details-widget__value {
 .activity-widget {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 0;
   width: 100%;
   max-width: 1000px;
   box-sizing: border-box;
@@ -2266,10 +2353,11 @@ button.claim-details-widget__value {
 
 .activity-widget__title-row {
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: space-between;
   width: 100%;
-  padding: 12px 16px 0;
+  min-height: 40px;
+  padding: 8px 16px;
   box-sizing: border-box;
 }
 
@@ -2553,7 +2641,7 @@ button.claim-details-widget__value {
 .submissions-widget {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 0;
   width: 100%;
   max-width: 1000px;
   box-sizing: border-box;
@@ -2575,10 +2663,11 @@ button.claim-details-widget__value {
 
 .submissions-widget__title-row {
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: space-between;
   width: 100%;
-  padding: 12px 16px 0;
+  min-height: 40px;
+  padding: 8px 16px;
   box-sizing: border-box;
 }
 
@@ -4140,7 +4229,7 @@ button.claim-details-widget__value {
 .remittances-widget {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 0;
   width: 100%;
   max-width: 1000px;
   box-sizing: border-box;
@@ -4162,10 +4251,11 @@ button.claim-details-widget__value {
 
 .remittances-widget__title-row {
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: space-between;
   width: 100%;
-  padding: 12px 16px 0;
+  min-height: 40px;
+  padding: 8px 16px;
   box-sizing: border-box;
 }
 
@@ -4366,7 +4456,7 @@ button.claim-details-widget__value {
 .payments-widget {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 0;
   width: 100%;
   max-width: 1000px;
   box-sizing: border-box;
@@ -4388,10 +4478,11 @@ button.claim-details-widget__value {
 
 .payments-widget__title-row {
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: space-between;
   width: 100%;
-  padding: 12px 16px 0;
+  min-height: 40px;
+  padding: 8px 16px;
   box-sizing: border-box;
 }
 
@@ -4803,7 +4894,7 @@ button.claim-details-widget__value {
 .documentation-widget {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 0;
   width: 100%;
   max-width: 1000px;
   box-sizing: border-box;
@@ -4825,10 +4916,11 @@ button.claim-details-widget__value {
 
 .documentation-widget__title-row {
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: space-between;
   width: 100%;
-  padding: 12px 16px 0;
+  min-height: 40px;
+  padding: 8px 16px;
   box-sizing: border-box;
 }
 
@@ -5497,7 +5589,7 @@ button.claim-details-widget__value {
 .review-widget {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 0;
   width: 100%;
   max-width: 1000px;
   box-sizing: border-box;
@@ -5520,10 +5612,11 @@ button.claim-details-widget__value {
 
 .review-widget__title-row {
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: space-between;
   width: 100%;
-  padding: 12px 16px 0;
+  min-height: 40px;
+  padding: 8px 16px;
   box-sizing: border-box;
 }
 
@@ -5571,8 +5664,8 @@ button.claim-details-widget__value {
 }
 
 .review-banner--idle {
-  background: #f2f2f2;
-  border: 1px solid transparent;
+  background: transparent;
+  border: 1px solid var(--outline);
 }
 
 .review-banner--progress {

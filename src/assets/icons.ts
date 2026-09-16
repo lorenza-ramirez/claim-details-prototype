@@ -58,6 +58,8 @@ export { default as paymentsAddCircle } from './figma/payments-add-circle.svg'
 export { default as paymentsFilter } from './figma/payments-filter.svg'
 export { default as paymentsChevronRight } from './figma/payments-chevron-right.svg'
 export { default as paymentsArrowDropDown } from './figma/payments-arrow-drop-down.svg'
+/** Shared disclosure arrow for widget headers (Figma 9190:234898 keyboard_arrow_down). */
+export { default as widgetArrowDown } from './figma/widget-arrow-down.svg'
 export { default as viewPreview } from './figma/view-preview.svg'
 export { default as viewDoubleArrow } from './figma/view-double-arrow.svg'
 export { default as viewMenu } from './figma/view-menu.svg'

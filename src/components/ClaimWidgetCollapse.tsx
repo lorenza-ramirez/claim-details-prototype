@@ -8,11 +8,11 @@ import {
   useState,
   type ReactNode,
 } from 'react'
-import { paymentsArrowDropDown } from '../assets/icons'
+import { widgetArrowDown } from '../assets/icons'
 
 type ClaimWidgetsCollapseApi = {
   openById: Record<string, boolean>
-  register: (id: string, defaultOpen: boolean) => void
+  register: (id: string, defaultOpen: boolean, excludeFromCollapseAll?: boolean) => void
   unregister: (id: string) => void
   toggle: (id: string) => void
   collapseAll: () => void
@@ -24,17 +24,27 @@ const ClaimWidgetsCollapseContext = createContext<ClaimWidgetsCollapseApi | null
 
 export function ClaimWidgetsCollapseProvider({ children }: { children: ReactNode }) {
   const [openById, setOpenById] = useState<Record<string, boolean>>({})
+  const [skipCollapseAll, setSkipCollapseAll] = useState<Record<string, true>>({})
 
-  const register = useCallback((id: string, defaultOpen: boolean) => {
+  const register = useCallback((id: string, defaultOpen: boolean, excludeFromCollapseAll = false) => {
     setOpenById((prev) => {
       if (Object.prototype.hasOwnProperty.call(prev, id)) return prev
       return { ...prev, [id]: defaultOpen }
     })
+    if (excludeFromCollapseAll) {
+      setSkipCollapseAll((prev) => (prev[id] ? prev : { ...prev, [id]: true }))
+    }
   }, [])
 
   const unregister = useCallback((id: string) => {
     setOpenById((prev) => {
       if (!Object.prototype.hasOwnProperty.call(prev, id)) return prev
+      const next = { ...prev }
+      delete next[id]
+      return next
+    })
+    setSkipCollapseAll((prev) => {
+      if (!prev[id]) return prev
       const next = { ...prev }
       delete next[id]
       return next
@@ -51,10 +61,12 @@ export function ClaimWidgetsCollapseProvider({ children }: { children: ReactNode
   const collapseAll = useCallback(() => {
     setOpenById((prev) => {
       const next: Record<string, boolean> = {}
-      for (const id of Object.keys(prev)) next[id] = false
+      for (const id of Object.keys(prev)) {
+        next[id] = skipCollapseAll[id] ? prev[id] : false
+      }
       return next
     })
-  }, [])
+  }, [skipCollapseAll])
 
   const expandAll = useCallback(() => {
     setOpenById((prev) => {
@@ -64,7 +76,7 @@ export function ClaimWidgetsCollapseProvider({ children }: { children: ReactNode
     })
   }, [])
 
-  const anyOpen = Object.values(openById).some(Boolean)
+  const anyOpen = Object.entries(openById).some(([id, open]) => open && !skipCollapseAll[id])
 
   const value = useMemo(
     () => ({
@@ -102,10 +114,11 @@ export function useClaimWidgetsCollapsible() {
   return useContext(ClaimWidgetsCollapseContext) != null
 }
 
-export function useClaimWidgetOpen(defaultOpen = true) {
+export function useClaimWidgetOpen(defaultOpen = false, options?: { excludeFromCollapseAll?: boolean }) {
   const ctx = useContext(ClaimWidgetsCollapseContext)
   const id = useId()
   const contentId = useId()
+  const excludeFromCollapseAll = options?.excludeFromCollapseAll ?? false
 
   const register = ctx?.register
   const unregister = ctx?.unregister
@@ -114,9 +127,9 @@ export function useClaimWidgetOpen(defaultOpen = true) {
 
   useEffect(() => {
     if (!register || !unregister) return
-    register(id, defaultOpen)
+    register(id, defaultOpen, excludeFromCollapseAll)
     return () => unregister(id)
-  }, [id, defaultOpen, register, unregister])
+  }, [id, defaultOpen, excludeFromCollapseAll, register, unregister])
 
   if (!ctx || !toggleInContext) {
     return {
@@ -160,8 +173,12 @@ export function ClaimWidgetToggle({
       aria-controls={controlsId}
       onClick={onToggle}
     >
+      {leading}
+      <h3 id={titleId} className={titleClassName}>
+        {title}
+      </h3>
       <img
-        src={paymentsArrowDropDown}
+        src={widgetArrowDown}
         alt=""
         width={20}
         height={20}
@@ -172,10 +189,6 @@ export function ClaimWidgetToggle({
         }
         draggable={false}
       />
-      {leading}
-      <h3 id={titleId} className={titleClassName}>
-        {title}
-      </h3>
     </button>
   )
 }

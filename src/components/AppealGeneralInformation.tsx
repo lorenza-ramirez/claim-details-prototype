@@ -1,11 +1,10 @@
 import { useMemo, useState, type KeyboardEvent, type ReactNode } from 'react'
 import appealBackup from '../assets/figma/appeal-backup.svg'
-import appealChevronDown from '../assets/figma/appeal-chevron-down.svg'
 import appealChipInfo from '../assets/figma/appeal-info.svg'
 import appealDenied from '../assets/figma/appeal-denied.svg'
 import appealRadioSelected from '../assets/figma/appeal-radio-selected.svg'
 import appealRadioUnselected from '../assets/figma/appeal-radio-unselected.svg'
-import { search, submissionsSortDown, tune } from '../assets/icons'
+import { search, submissionsSortDown, tune, widgetArrowDown } from '../assets/icons'
 
 /** Synthetic demo values from Figma — not real PHI/PII. */
 const APPEAL_SUBMISSION = {
@@ -202,7 +201,7 @@ function CollapsibleCard({
     <>
       <h3 id={titleId}>{title}</h3>
       <img
-        src={appealChevronDown}
+        src={widgetArrowDown}
         alt=""
         width={20}
         height={20}
@@ -512,7 +511,7 @@ function AppealDocumentationWidget() {
             <span className="appeal-submission__title-btn">
               <h3 id="appeal-docs-title">Documentation</h3>
               <img
-                src={appealChevronDown}
+                src={widgetArrowDown}
                 alt=""
                 width={20}
                 height={20}
@@ -526,7 +525,7 @@ function AppealDocumentationWidget() {
             <div className="appeal-submission__title-btn">
               <h3 id="appeal-docs-title">Documentation</h3>
               <img
-                src={appealChevronDown}
+                src={widgetArrowDown}
                 alt=""
                 width={20}
                 height={20}

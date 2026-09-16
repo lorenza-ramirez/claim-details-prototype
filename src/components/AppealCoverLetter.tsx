@@ -1,5 +1,5 @@
 import { useState, type KeyboardEvent } from 'react'
-import appealChevronDown from '../assets/figma/appeal-chevron-down.svg'
+import { widgetArrowDown } from '../assets/icons'
 import appealCoverAi from '../assets/figma/appeal-cover-ai.svg'
 import appealDelete from '../assets/figma/appeal-delete.svg'
 import appealRestart from '../assets/figma/appeal-restart.svg'
@@ -128,7 +128,7 @@ function ArgumentCard({ onHighlight }: { onHighlight: (id: string | null) => voi
           >
             <span id="appeal-cover-arguments-title">Argument</span>
             <img
-              src={appealChevronDown}
+              src={widgetArrowDown}
               alt=""
               width={20}
               height={20}
@@ -138,7 +138,7 @@ function ArgumentCard({ onHighlight }: { onHighlight: (id: string | null) => voi
         ) : (
           <div className="appeal-cover__card-toggle">
             <span id="appeal-cover-arguments-title">Argument</span>
-            <img src={appealChevronDown} alt="" width={20} height={20} />
+            <img src={widgetArrowDown} alt="" width={20} height={20} />
           </div>
         )}
         <button
@@ -200,7 +200,7 @@ function ContentParagraph({
         >
           <span>{title}</span>
           <img
-            src={appealChevronDown}
+            src={widgetArrowDown}
             alt=""
             width={20}
             height={20}

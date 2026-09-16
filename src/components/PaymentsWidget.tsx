@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import {
   paymentsAddCircle,
-  paymentsArrowDropDown,
+  widgetArrowDown,
   paymentsChevronRight,
   paymentsDangerous,
   paymentsFilter,
@@ -296,7 +296,7 @@ function ProcedureRows({
               }}
             >
               <img
-                src={isOpen ? paymentsArrowDropDown : paymentsChevronRight}
+                src={isOpen ? widgetArrowDown : paymentsChevronRight}
                 alt=""
                 width={12}
                 height={12}
@@ -466,7 +466,7 @@ export function PaymentsWidget({ hideHeader = false }: { hideHeader?: boolean })
                         }}
                       >
                         <img
-                          src={primaryOpen ? paymentsArrowDropDown : paymentsChevronRight}
+                          src={primaryOpen ? widgetArrowDown : paymentsChevronRight}
                           alt=""
                           width={12}
                           height={12}
@@ -518,7 +518,7 @@ export function PaymentsWidget({ hideHeader = false }: { hideHeader?: boolean })
                         }}
                       >
                         <img
-                          src={secondaryOpen ? paymentsArrowDropDown : paymentsChevronRight}
+                          src={secondaryOpen ? widgetArrowDown : paymentsChevronRight}
                           alt=""
                           width={12}
                           height={12}

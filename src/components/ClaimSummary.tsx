@@ -13,23 +13,46 @@ import { ClaimWidgetTitle, useClaimWidgetOpen } from './ClaimWidgetCollapse'
 import { AppealPackageModal } from './AppealPackageModal'
 
 /** Synthetic demo suggestion copy — not real PHI/PII. */
-const SUGGESTION = {
-  actionLabel: 'Add evaluation CPT code',
-  title: 'Add Evaluation Code',
-  reason:
-    "The claim includes therapy units without a required evaluation CPT. Adding an evaluation code (97161–97164) aligns the claim with payer documentation rules and reduces the risk of a submission rejection.",
-  reasonMore:
-    'Verify the selected evaluation code against the chart note, then resubmit to WC-MEMIC.',
-  changes: [
-    { label: 'Procedure', value: '97110 only → 97161 + 97110' },
-    { label: 'Units', value: '2 → 3' },
-  ],
-  moreChanges: [
-    { label: 'Diagnosis link', value: 'Unlinked → M54.50' },
-    { label: 'Modifier', value: 'None → GP' },
-  ],
-  sourceLink: 'Historical Eligibility Check',
-}
+const SUGGESTIONS = [
+  {
+    id: 'review-dx',
+    actionLabel: 'Review principal diagnosis',
+    title: 'Review Principal Diagnosis',
+    reason:
+      'The claim was denied for an invalid or missing principal diagnosis (CARC 167, RARC MA63). CPT 97110 is billed with M54.2, F07.81, M54.6, and M54.50. Confirm which diagnosis is principal from the visit documentation.',
+    reasonMore:
+      'Match the principal diagnosis to the documented reason for the encounter, then resubmit to WC-OWCP.',
+    changes: [
+      { label: 'Principal DX', value: 'Unspecified → confirmed from note' },
+      { label: 'Denial', value: 'CARC 167 / RARC MA63' },
+    ],
+    moreChanges: [
+      { label: 'Chart note', value: 'Identify reason for visit' },
+      { label: 'Payer', value: 'WC-OWCP / U.S. DOL' },
+    ],
+    sourceLink: 'Visit documentation',
+  },
+  {
+    id: 'update-seq',
+    actionLabel: 'Update diagnosis sequencing',
+    title: 'Update Diagnosis Sequencing',
+    reason:
+      'Diagnosis order and procedure linkage may not identify a valid principal diagnosis for CPT 97110. Re-sequence M54.2, F07.81, M54.6, and M54.50 so the principal diagnosis leads the claim.',
+    reasonMore:
+      'Link 97110 to the corrected principal diagnosis, then resubmit to WC-OWCP.',
+    changes: [
+      { label: 'DX sequence', value: 'M54.2, F07.81, M54.6, M54.50' },
+      { label: 'Linkage', value: '97110 → principal DX' },
+    ],
+    moreChanges: [
+      { label: 'Principal DX', value: 'Move valid DX to position 1' },
+      { label: 'Units', value: '97110 ×3 unchanged' },
+    ],
+    sourceLink: 'Claim diagnosis pointer',
+  },
+] as const
+
+type Suggestion = (typeof SUGGESTIONS)[number]
 
 function Icon({
   src,
@@ -90,14 +113,15 @@ function useHoverPopover(delayMs = 120) {
   return { open, show, hide }
 }
 
-function SuggestedActionHover() {
+function SuggestedActionHover({ suggestion }: { suggestion: Suggestion }) {
   const { open, show, hide } = useHoverPopover()
   const [reasonExpanded, setReasonExpanded] = useState(false)
   const [changesExpanded, setChangesExpanded] = useState(false)
+  const popoverId = `${suggestion.id}-popover`
 
   const visibleChanges = changesExpanded
-    ? [...SUGGESTION.changes, ...SUGGESTION.moreChanges]
-    : SUGGESTION.changes
+    ? [...suggestion.changes, ...suggestion.moreChanges]
+    : suggestion.changes
 
   return (
     <div
@@ -108,18 +132,18 @@ function SuggestedActionHover() {
       <button
         type="button"
         className="claim-summary__action"
-        aria-describedby={open ? 'suggested-action-popover' : undefined}
+        aria-describedby={open ? popoverId : undefined}
         aria-expanded={open}
       >
         <span className="claim-summary__action-icon">
           <Icon src={checkCircle} size={14} />
         </span>
-        {SUGGESTION.actionLabel}
+        {suggestion.actionLabel}
       </button>
 
       {open ? (
         <div
-          id="suggested-action-popover"
+          id={popoverId}
           role="dialog"
           aria-label="Why this action is suggested"
           className="suggestion-hover"
@@ -132,10 +156,10 @@ function SuggestedActionHover() {
 
           <div className="suggestion-hover__body">
             <div className="suggestion-hover__block">
-              <p className="suggestion-hover__action-title">{SUGGESTION.title}</p>
+              <p className="suggestion-hover__action-title">{suggestion.title}</p>
               <p className="suggestion-hover__reason">
-                {SUGGESTION.reason}
-                {reasonExpanded ? ` ${SUGGESTION.reasonMore}` : null}
+                {suggestion.reason}
+                {reasonExpanded ? ` ${suggestion.reasonMore}` : null}
                 {!reasonExpanded ? '…' : null}
               </p>
               {!reasonExpanded ? (
@@ -177,7 +201,7 @@ function SuggestedActionHover() {
 
           <div className="suggestion-hover__footer">
             <button type="button" className="suggestion-hover__link">
-              {SUGGESTION.sourceLink}
+              {suggestion.sourceLink}
             </button>
             <div className="suggestion-hover__footer-actions">
               <button
@@ -201,7 +225,9 @@ function SuggestedActionHover() {
 }
 
 export function ClaimSummary() {
-  const { open, contentId, toggle, collapsible } = useClaimWidgetOpen()
+  const { open, contentId, toggle, collapsible } = useClaimWidgetOpen(true, {
+    excludeFromCollapseAll: true,
+  })
   const [appealOpen, setAppealOpen] = useState(false)
   const isOpen = !collapsible || open
 
@@ -239,17 +265,17 @@ export function ClaimSummary() {
         {isOpen ? (
           <div id={contentId} className="claim-widget__body">
             <p className="claim-summary__body">
-              This $61.06 workers&apos; comp claim for{' '}
+              This $91.59 workers&apos; comp claim for{' '}
               <button type="button" className="claim-summary__link">
-                DOS 06/24/2026
+                DOS 08/17/2026
               </button>{' '}
-              has a <span className="claim-summary__error">submission error </span>
-              because it includes 2 units of{' '}
+              was <span className="claim-summary__error">fully denied</span> by WC-OWCP / U.S.
+              Department of Labor for an invalid or missing principal diagnosis (CARC 167, RARC
+              MA63).{' '}
               <button type="button" className="claim-summary__link">
                 CPT 97110
               </button>{' '}
-              without a required evaluation code. Add the appropriate evaluation CPT code
-              (97161–97164), verify it against the documentation, and resubmit the claim to WC-MEMIC.
+              was billed for 3 units with diagnoses including M54.2, F07.81, M54.6, and M54.50.
             </p>
 
             <div className="claim-summary__divider" aria-hidden />
@@ -257,7 +283,9 @@ export function ClaimSummary() {
             <p className="claim-summary__actions-label">Suggested Actions</p>
 
             <div className="claim-summary__actions">
-              <SuggestedActionHover />
+              {SUGGESTIONS.map((suggestion) => (
+                <SuggestedActionHover key={suggestion.id} suggestion={suggestion} />
+              ))}
               <button
                 type="button"
                 className="claim-summary__action"
