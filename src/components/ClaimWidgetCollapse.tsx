@@ -173,10 +173,6 @@ export function ClaimWidgetToggle({
       aria-controls={controlsId}
       onClick={onToggle}
     >
-      {leading}
-      <h3 id={titleId} className={titleClassName}>
-        {title}
-      </h3>
       <img
         src={widgetArrowDown}
         alt=""
@@ -189,6 +185,10 @@ export function ClaimWidgetToggle({
         }
         draggable={false}
       />
+      {leading}
+      <h3 id={titleId} className={titleClassName}>
+        {title}
+      </h3>
     </button>
   )
 }

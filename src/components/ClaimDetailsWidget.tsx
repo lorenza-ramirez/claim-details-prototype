@@ -272,17 +272,23 @@ function InsurancesField({ value }: { value: string }) {
   )
 }
 
-export function ClaimDetailsWidget() {
+export function ClaimDetailsWidget({ hideHeader = false }: { hideHeader?: boolean }) {
   const { open, contentId, toggle, collapsible } = useClaimWidgetOpen()
   const isOpen = !collapsible || open
+  const showBody = hideHeader || isOpen
 
   return (
     <section
       className={
-        isOpen ? 'claim-details-widget' : 'claim-details-widget claim-widget--collapsed'
+        isOpen || hideHeader
+          ? 'claim-details-widget'
+          : 'claim-details-widget claim-widget--collapsed'
       }
-      aria-labelledby="claim-details-widget-title"
+      {...(hideHeader
+        ? { 'aria-label': 'Claim Details' }
+        : { 'aria-labelledby': 'claim-details-widget-title' })}
     >
+      {hideHeader ? null : (
       <header className="claim-details-widget__title-row">
         <ClaimWidgetTitle
           collapsible={collapsible}
@@ -299,8 +305,9 @@ export function ClaimDetailsWidget() {
           className="claim-details-widget__actions"
         />
       </header>
+      )}
 
-      {isOpen ? (
+      {showBody ? (
       <div id={contentId} className="claim-widget__body">
       <div className="claim-details-widget__section">
         <div className="claim-details-widget__grid">

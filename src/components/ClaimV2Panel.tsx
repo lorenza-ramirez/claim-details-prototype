@@ -10,6 +10,7 @@ import { SubmissionsWidget } from './SubmissionsWidget'
 import { WidgetViewButtons, type WidgetViewId } from './widgetView'
 
 type V2TabId =
+  | 'overview'
   | 'review'
   | 'activity'
   | 'submissions'
@@ -18,6 +19,7 @@ type V2TabId =
   | 'payments'
 
 const V2_TABS: { id: V2TabId; label: string }[] = [
+  { id: 'overview', label: 'Overview' },
   { id: 'review', label: 'Review' },
   { id: 'activity', label: 'Activity' },
   { id: 'submissions', label: 'Submissions' },
@@ -27,6 +29,7 @@ const V2_TABS: { id: V2TabId; label: string }[] = [
 ]
 
 const TAB_VIEW: Partial<Record<V2TabId, { widgetId: WidgetViewId; title: string }>> = {
+  overview: { widgetId: 'details', title: 'Overview' },
   review: { widgetId: 'review', title: 'Review' },
   activity: { widgetId: 'activity', title: 'Activity' },
   submissions: { widgetId: 'submissions', title: 'Submissions' },
@@ -36,18 +39,12 @@ const TAB_VIEW: Partial<Record<V2TabId, { widgetId: WidgetViewId; title: string 
 }
 
 export function ClaimV2Panel() {
-  const [activeTab, setActiveTab] = useState<V2TabId>('review')
+  const [activeTab, setActiveTab] = useState<V2TabId>('overview')
   const activeView = TAB_VIEW[activeTab]
 
   return (
     <div className="claim-v2">
       <ClaimSummary />
-
-      <div className="claim-v2__details">
-        <div className="claim-details-widget-wrap">
-          <ClaimDetailsWidget />
-        </div>
-      </div>
 
       <div className="claim-v2__tabs">
         <div className="claim-v2__tab-list" role="tablist" aria-label="Claim sections">
@@ -77,6 +74,11 @@ export function ClaimV2Panel() {
       </div>
 
       <div className="claim-v2__content" role="tabpanel">
+        {activeTab === 'overview' ? (
+          <div className="claim-details-widget-wrap">
+            <ClaimDetailsWidget hideHeader />
+          </div>
+        ) : null}
         {activeTab === 'review' ? (
           <div className="review-widget-wrap">
             <ReviewWidget hideHeader />

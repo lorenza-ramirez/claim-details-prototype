@@ -451,14 +451,38 @@ function FileTypeIcon({ kind }: { kind: FileKind }) {
   )
 }
 
-function AppealDocumentationWidget() {
-  const [open, setOpen] = useState(true)
+export type AppealDocument = DocumentationRow
+
+export function AppealDocumentationWidget({
+  defaultOpen = true,
+  sectionId = 'appeal-section-documentation',
+  variant = 'select',
+  activeDocumentId,
+  onOpenDocument,
+}: {
+  defaultOpen?: boolean
+  sectionId?: string
+  variant?: 'select' | 'attached'
+  activeDocumentId?: string | null
+  onOpenDocument?: (document: AppealDocument) => void
+}) {
+  const [open, setOpen] = useState(defaultOpen)
   const [filter, setFilter] = useState<DocCategory>('all')
   const [selected, setSelected] = useState<string[]>(INITIAL_SELECTED)
+  const attached = variant === 'attached'
+  const titleId = `${sectionId}-title`
+  const bodyId = `${sectionId}-body`
 
+  const sourceRows = useMemo(
+    () =>
+      attached
+        ? DOCUMENT_ROWS.filter((row) => INITIAL_SELECTED.includes(row.id))
+        : DOCUMENT_ROWS,
+    [attached],
+  )
   const rows = useMemo(
-    () => (filter === 'all' ? DOCUMENT_ROWS : DOCUMENT_ROWS.filter((row) => row.category === filter)),
-    [filter],
+    () => (filter === 'all' ? sourceRows : sourceRows.filter((row) => row.category === filter)),
+    [filter, sourceRows],
   )
   const selectedOnPage = rows.filter((row) => selected.includes(row.id))
   const allSelected = rows.length > 0 && selectedOnPage.length === rows.length
@@ -480,15 +504,21 @@ function AppealDocumentationWidget() {
 
   return (
     <section
-      id="appeal-section-documentation"
-      className={open ? 'appeal-docs' : 'appeal-docs appeal-docs--collapsed'}
-      aria-labelledby="appeal-docs-title"
+      id={sectionId}
+      className={[
+        'appeal-docs',
+        open ? '' : 'appeal-docs--collapsed',
+        attached ? 'appeal-docs--attached' : '',
+      ]
+        .filter(Boolean)
+        .join(' ')}
+      aria-labelledby={titleId}
       {...(!open
         ? {
             role: 'button',
             tabIndex: 0,
             'aria-expanded': false,
-            'aria-controls': 'appeal-docs-body',
+            'aria-controls': bodyId,
             onClick: () => setOpen(true),
             onKeyDown: (event: KeyboardEvent<HTMLElement>) => {
               if (event.key === 'Enter' || event.key === ' ') {
@@ -505,11 +535,11 @@ function AppealDocumentationWidget() {
             type="button"
             className="appeal-docs__toggle"
             aria-expanded
-            aria-controls="appeal-docs-body"
+            aria-controls={bodyId}
             onClick={() => setOpen(false)}
           >
             <span className="appeal-submission__title-btn">
-              <h3 id="appeal-docs-title">Documentation</h3>
+              <h3 id={titleId}>Documentation</h3>
               <img
                 src={widgetArrowDown}
                 alt=""
@@ -523,7 +553,7 @@ function AppealDocumentationWidget() {
         ) : (
           <>
             <div className="appeal-submission__title-btn">
-              <h3 id="appeal-docs-title">Documentation</h3>
+              <h3 id={titleId}>Documentation</h3>
               <img
                 src={widgetArrowDown}
                 alt=""
@@ -538,15 +568,17 @@ function AppealDocumentationWidget() {
       </header>
 
       {open ? (
-      <div id="appeal-docs-body" className="appeal-docs__body">
-        <div className="appeal-docs__upload">
-          <span className="appeal-docs__upload-icon">
-            <img src={appealBackup} alt="" width={20} height={20} />
-          </span>
-          <p>
-            drop files here or <button type="button">Browse Files</button>
-          </p>
-        </div>
+      <div id={bodyId} className="appeal-docs__body">
+        {attached ? null : (
+          <div className="appeal-docs__upload">
+            <span className="appeal-docs__upload-icon">
+              <img src={appealBackup} alt="" width={20} height={20} />
+            </span>
+            <p>
+              drop files here or <button type="button">Browse Files</button>
+            </p>
+          </div>
+        )}
 
         <div className="appeal-docs__toolbar">
           <div className="documentation-widget__tabs" role="tablist" aria-label="Document categories">
@@ -584,17 +616,19 @@ function AppealDocumentationWidget() {
           <table className="appeal-docs__table">
             <thead>
               <tr>
-                <th className="appeal-docs__th appeal-docs__th--check" scope="col">
-                  <input
-                    type="checkbox"
-                    checked={allSelected}
-                    ref={(node) => {
-                      if (node) node.indeterminate = someSelected
-                    }}
-                    onChange={toggleAll}
-                    aria-label="Select all documents"
-                  />
-                </th>
+                {attached ? null : (
+                  <th className="appeal-docs__th appeal-docs__th--check" scope="col">
+                    <input
+                      type="checkbox"
+                      checked={allSelected}
+                      ref={(node) => {
+                        if (node) node.indeterminate = someSelected
+                      }}
+                      onChange={toggleAll}
+                      aria-label="Select all documents"
+                    />
+                  </th>
+                )}
                 <th className="appeal-docs__th appeal-docs__th--file" scope="col">
                   <span>File</span>
                   <img src={submissionsSortDown} alt="" width={16} height={16} />
@@ -615,15 +649,40 @@ function AppealDocumentationWidget() {
             </thead>
             <tbody>
               {rows.map((row) => (
-                <tr key={row.id}>
-                  <td className="appeal-docs__td appeal-docs__td--check">
-                    <input
-                      type="checkbox"
-                      checked={selected.includes(row.id)}
-                      onChange={() => toggleRow(row.id)}
-                      aria-label={`Select ${row.name}`}
-                    />
-                  </td>
+                <tr
+                  key={row.id}
+                  className={[
+                    attached ? 'appeal-docs__row' : '',
+                    attached && activeDocumentId === row.id ? 'appeal-docs__row--active' : '',
+                  ]
+                    .filter(Boolean)
+                    .join(' ')}
+                  {...(attached && onOpenDocument
+                    ? {
+                        tabIndex: 0,
+                        role: 'button',
+                        'aria-label': `View ${row.name}`,
+                        'aria-pressed': activeDocumentId === row.id,
+                        onClick: () => onOpenDocument(row),
+                        onKeyDown: (event: KeyboardEvent<HTMLTableRowElement>) => {
+                          if (event.key === 'Enter' || event.key === ' ') {
+                            event.preventDefault()
+                            onOpenDocument(row)
+                          }
+                        },
+                      }
+                    : {})}
+                >
+                  {attached ? null : (
+                    <td className="appeal-docs__td appeal-docs__td--check">
+                      <input
+                        type="checkbox"
+                        checked={selected.includes(row.id)}
+                        onChange={() => toggleRow(row.id)}
+                        aria-label={`Select ${row.name}`}
+                      />
+                    </td>
+                  )}
                   <td className="appeal-docs__td">
                     <div className="documentation-widget__file-cell">
                       <FileTypeIcon kind={row.kind} />

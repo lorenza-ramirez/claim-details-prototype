@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import appealArrowBack from '../assets/figma/appeal-arrow-back.svg'
 import appealAutoAwesome from '../assets/figma/appeal-auto-awesome.svg'
 import appealCheckActive from '../assets/figma/appeal-check-active.svg'
 import appealCheckCircle from '../assets/figma/appeal-check-circle.svg'
@@ -45,6 +46,7 @@ const APPEAL_STEPS: AppealStep[] = [
     icon: appealCoverLetter,
     activeIcon: appealCoverActive,
     subSteps: [
+      { label: 'Documentation', targetId: 'appeal-section-cover-documentation' },
       { label: 'Argument', targetId: 'appeal-section-argument' },
       { label: 'Claim and Denial Values', targetId: 'appeal-section-claim-denial' },
       { label: 'From · site defaults', targetId: 'appeal-section-from' },
@@ -237,18 +239,38 @@ export function AppealPackageModal({ onClose }: { onClose: () => void }) {
 
             <section className="appeal-package__builder" aria-label="Appeal package builder">
               <header className="appeal-package__panel-header appeal-package__builder-header">
+                {activeStep > 0 ? (
+                  <button
+                    type="button"
+                    className="icon-btn appeal-package__back"
+                    aria-label="Back"
+                    title="Back"
+                    onClick={() => {
+                      setActiveStep((step) => Math.max(step - 1, 0))
+                      setActiveSubStep(null)
+                    }}
+                  >
+                    <img src={appealArrowBack} alt="" width={20} height={20} />
+                  </button>
+                ) : null}
                 <h3>{APPEAL_STEPS[activeStep].label}</h3>
-                <button
-                  type="button"
-                  className="btn btn--primary appeal-package__continue"
-                  onClick={() => {
-                    setActiveStep((step) => Math.min(step + 1, APPEAL_STEPS.length - 1))
-                    setControlsCollapsed(true)
-                    setActiveSubStep(null)
-                  }}
-                >
-                  {activeStep === 0 ? 'Continue to Cover Letter' : 'Continue to Payer Form'}
-                </button>
+                {activeStep < APPEAL_STEPS.length - 1 ? (
+                  <button
+                    type="button"
+                    className="btn btn--primary appeal-package__continue"
+                    onClick={() => {
+                      setActiveStep((step) => Math.min(step + 1, APPEAL_STEPS.length - 1))
+                      setControlsCollapsed(true)
+                      setActiveSubStep(null)
+                    }}
+                  >
+                    {activeStep === 0
+                      ? 'Continue to Cover Letter'
+                      : activeStep === 1
+                        ? 'Continue to Payer Form'
+                        : 'Continue to Confirm and Submit'}
+                  </button>
+                ) : null}
               </header>
               <div
                 className={

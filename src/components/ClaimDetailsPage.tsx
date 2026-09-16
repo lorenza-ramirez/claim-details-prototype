@@ -847,7 +847,11 @@ function ClaimDetailsPageInner({
 }) {
   const [activeNav, setActiveNav] = useState<ContextNavId>('summary')
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
-  const [contextNavCollapsed, setContextNavCollapsed] = useState(false)
+  const [contextNavCollapsed, setContextNavCollapsed] = useState(true)
+
+  useEffect(() => {
+    if (version === 'v1') setContextNavCollapsed(true)
+  }, [version])
   const { view, close, openSide, openSplit, openFull, navigateRecord, closeSplitPane } =
     useWidgetView()
 
