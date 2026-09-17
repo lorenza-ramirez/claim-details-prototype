@@ -14,20 +14,21 @@ import appealFilePresent from '../assets/figma/appeal-file-present.svg'
 import appealPayerForm from '../assets/figma/appeal-payer-form.svg'
 import appealSend from '../assets/figma/appeal-send.svg'
 import { leftPanelClose } from '../assets/icons'
+import { AppealAiAssistant } from './AppealAiAssistant'
+import {
+  APPEAL_SEND_ACTION_LABEL,
+  AppealConfirmSubmit,
+  type AppealSendChannel,
+} from './AppealConfirmSubmit'
 import { AppealCoverLetter } from './AppealCoverLetter'
 import { AppealGeneralInformation } from './AppealGeneralInformation'
-
-type AppealSubStep = {
-  label: string
-  targetId: string
-}
+import { AppealPayerForm } from './AppealPayerForm'
 
 type AppealStep = {
   label: string
   icon: string
   completedIcon?: string
   activeIcon?: string
-  subSteps?: AppealSubStep[]
 }
 
 const APPEAL_STEPS: AppealStep[] = [
@@ -35,23 +36,11 @@ const APPEAL_STEPS: AppealStep[] = [
     label: '1. General Information',
     icon: appealFilePresent,
     completedIcon: appealFileComplete,
-    subSteps: [
-      { label: 'Submission', targetId: 'appeal-section-submission' },
-      { label: 'Procedures', targetId: 'appeal-section-procedures' },
-      { label: 'Documentation', targetId: 'appeal-section-documentation' },
-    ],
   },
   {
     label: '2. Cover Letter',
     icon: appealCoverLetter,
     activeIcon: appealCoverActive,
-    subSteps: [
-      { label: 'Documentation', targetId: 'appeal-section-cover-documentation' },
-      { label: 'Argument', targetId: 'appeal-section-argument' },
-      { label: 'Claim and Denial Values', targetId: 'appeal-section-claim-denial' },
-      { label: 'From · site defaults', targetId: 'appeal-section-from' },
-      { label: 'Request', targetId: 'appeal-section-request' },
-    ],
   },
   { label: '3. Payer Form', icon: appealPayerForm },
   { label: '4. Confirm and Submit', icon: appealSend },
@@ -61,15 +50,13 @@ export function AppealPackageModal({ onClose }: { onClose: () => void }) {
   const closeButtonRef = useRef<HTMLButtonElement>(null)
   const [activeStep, setActiveStep] = useState(0)
   const [controlsCollapsed, setControlsCollapsed] = useState(false)
-  const [activeSubStep, setActiveSubStep] = useState<string | null>(null)
+  const [aiOpen, setAiOpen] = useState(false)
+  const [sendChannel, setSendChannel] = useState<AppealSendChannel>('mail')
 
-  useEffect(() => {
-    if (!activeSubStep) return
-    const frame = window.requestAnimationFrame(() => {
-      document.getElementById(activeSubStep)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    })
-    return () => window.cancelAnimationFrame(frame)
-  }, [activeStep, activeSubStep])
+  function toggleAiPanel() {
+    if (!aiOpen) setControlsCollapsed(true)
+    setAiOpen((open) => !open)
+  }
 
   useEffect(() => {
     const previousOverflow = document.body.style.overflow
@@ -106,10 +93,20 @@ export function AppealPackageModal({ onClose }: { onClose: () => void }) {
             Create an Appeal Package
           </h2>
           <div className="appeal-package__header-actions">
-            <span className="appeal-package__ai-badge">
+            <button
+              type="button"
+              className={
+                aiOpen
+                  ? 'appeal-package__ai-badge appeal-package__ai-badge--active'
+                  : 'appeal-package__ai-badge'
+              }
+              aria-expanded={aiOpen}
+              aria-controls="appeal-ai-assistant"
+              onClick={toggleAiPanel}
+            >
               Athelas AI
               <img src={appealAutoAwesome} alt="" width={14} height={14} />
-            </span>
+            </button>
             <button
               ref={closeButtonRef}
               type="button"
@@ -123,7 +120,7 @@ export function AppealPackageModal({ onClose }: { onClose: () => void }) {
           </div>
         </header>
 
-        <div className="appeal-package__body">
+        <div className={aiOpen ? 'appeal-package__body appeal-package__body--ai-open' : 'appeal-package__body'}>
           <div className="appeal-package__workspace">
             <aside
               className={
@@ -177,20 +174,13 @@ export function AppealPackageModal({ onClose }: { onClose: () => void }) {
 
                     return (
                       <li key={step.label}>
-                        <button
-                          type="button"
+                        <div
                           className={
                             active
                               ? 'appeal-package__step appeal-package__step--active'
                               : 'appeal-package__step'
                           }
                           aria-current={active ? 'step' : undefined}
-                          aria-label={step.label}
-                          title={step.label}
-                          onClick={() => {
-                            setActiveStep(index)
-                            setActiveSubStep(null)
-                          }}
                         >
                           <span className="appeal-package__step-label">
                             <img src={stepIcon} alt="" width={20} height={20} />
@@ -204,29 +194,7 @@ export function AppealPackageModal({ onClose }: { onClose: () => void }) {
                               height={16}
                             />
                           )}
-                        </button>
-                        {!controlsCollapsed && step.subSteps ? (
-                          <ol className="appeal-package__substeps">
-                            {step.subSteps.map((subStep) => (
-                              <li key={subStep.targetId}>
-                                <button
-                                  type="button"
-                                  className={
-                                    activeSubStep === subStep.targetId
-                                      ? 'appeal-package__substep appeal-package__substep--active'
-                                      : 'appeal-package__substep'
-                                  }
-                                  onClick={() => {
-                                    setActiveStep(index)
-                                    setActiveSubStep(subStep.targetId)
-                                  }}
-                                >
-                                  {subStep.label}
-                                </button>
-                              </li>
-                            ))}
-                          </ol>
-                        ) : null}
+                        </div>
                       </li>
                     )
                   })}
@@ -247,7 +215,6 @@ export function AppealPackageModal({ onClose }: { onClose: () => void }) {
                     title="Back"
                     onClick={() => {
                       setActiveStep((step) => Math.max(step - 1, 0))
-                      setActiveSubStep(null)
                     }}
                   >
                     <img src={appealArrowBack} alt="" width={20} height={20} />
@@ -261,7 +228,6 @@ export function AppealPackageModal({ onClose }: { onClose: () => void }) {
                     onClick={() => {
                       setActiveStep((step) => Math.min(step + 1, APPEAL_STEPS.length - 1))
                       setControlsCollapsed(true)
-                      setActiveSubStep(null)
                     }}
                   >
                     {activeStep === 0
@@ -270,19 +236,47 @@ export function AppealPackageModal({ onClose }: { onClose: () => void }) {
                         ? 'Continue to Payer Form'
                         : 'Continue to Confirm and Submit'}
                   </button>
-                ) : null}
+                ) : (
+                  <button
+                    type="button"
+                    className="btn btn--primary appeal-package__continue"
+                    onClick={onClose}
+                  >
+                    {APPEAL_SEND_ACTION_LABEL[sendChannel]}
+                  </button>
+                )}
               </header>
               <div
                 className={
                   activeStep === 1
                     ? 'appeal-package__builder-content appeal-package__builder-content--cover'
-                    : 'appeal-package__builder-content'
+                    : activeStep === 2
+                      ? 'appeal-package__builder-content appeal-package__builder-content--payer'
+                      : activeStep === 3
+                        ? 'appeal-package__builder-content appeal-package__builder-content--confirm'
+                        : 'appeal-package__builder-content'
                 }
               >
-                {activeStep === 0 ? <AppealGeneralInformation /> : <AppealCoverLetter />}
+                {activeStep === 0 ? (
+                  <AppealGeneralInformation />
+                ) : activeStep === 1 ? (
+                  <AppealCoverLetter />
+                ) : activeStep === 2 ? (
+                  <AppealPayerForm />
+                ) : (
+                  <AppealConfirmSubmit
+                    channel={sendChannel}
+                    onChannelChange={setSendChannel}
+                  />
+                )}
               </div>
             </section>
           </div>
+          {aiOpen ? (
+            <div id="appeal-ai-assistant" className="appeal-package__ai-panel">
+              <AppealAiAssistant stepIndex={activeStep} />
+            </div>
+          ) : null}
         </div>
       </section>
     </div>,

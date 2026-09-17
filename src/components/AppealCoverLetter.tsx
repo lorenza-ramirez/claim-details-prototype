@@ -16,7 +16,9 @@ import appealDelete from '../assets/figma/appeal-delete.svg'
 import appealEdit from '../assets/figma/appeal-edit.svg'
 import appealRestart from '../assets/figma/appeal-restart.svg'
 import { AppealDocumentationWidget, type AppealDocument } from './AppealGeneralInformation'
-import { AppealWidgetForms } from './AppealWidgetForms'
+import { AppealPdfBar, AppealPreviewTabs, type AppealPreviewTab } from './AppealPreviewChrome'
+import { AppealFieldFocusProvider, AppealWidgetForms } from './AppealWidgetForms'
+import { ClaimDetailsSplitContent } from './ClaimDetailsSplitContent'
 
 const ARGUMENTS = [
   {
@@ -516,9 +518,11 @@ function ContentParagraph({
 
 function CoverLetterPage({
   activePiece,
+  activeField,
   paragraphs,
 }: {
   activePiece: string | null
+  activeField: string | null
   paragraphs: CoverParagraph[]
 }) {
   function pieceClass(id: string) {
@@ -527,33 +531,55 @@ function CoverLetterPage({
       : 'appeal-cover__letter-piece'
   }
 
+  function markClass(fieldId: string) {
+    return activeField === fieldId
+      ? 'appeal-cover__mark appeal-cover__mark--active'
+      : 'appeal-cover__mark'
+  }
+
   return (
     <article className="appeal-cover__page" aria-label="Generated appeal cover letter preview">
       <header className="appeal-cover__letterhead">
-        <strong>Ridgeview Physical Therapy</strong>
-        <span>123 Health Way, Suite 200</span>
-        <span>Austin, TX 78704</span>
-        <span>(512) 555-0187</span>
+        <strong className={markClass('practice')}>Ridgeview Physical Therapy</strong>
+        <span className={markClass('address')}>123 Health Way, Suite 200</span>
+        <span className={markClass('address')}>Austin, TX 78704</span>
+        <span className={markClass('phone')}>(512) 555-0187</span>
       </header>
 
       <div className="appeal-cover__letter-body">
         <p>
-          Date: 09/08/2026
+          Date: <span className={markClass('date')}>09/08/2026</span>
           <br />
-          To: BCBS Arizona · Appeals / Medical Review Department
+          To:{' '}
+          <span className={markClass('payer')}>
+            BCBS Arizona · Appeals / Medical Review Department
+          </span>
         </p>
-        <p>Subject: First-level appeal · Request for Claim Review · 22169011 / SUB-9077110</p>
         <p>
-          Patient: Jz Testform Test · DOB 11/22/1971
+          Subject: <span className={markClass('appeal-level')}>First-level appeal</span> · Request
+          for Claim Review ·{' '}
+          <span className={markClass('claim-submission')}>22169011 / SUB-9077110</span>
+        </p>
+        <p>
+          Patient: <span className={markClass('patient')}>Jz Testform Test</span> · DOB{' '}
+          <span className={markClass('dob')}>11/22/1971</span>
           <br />
-          Member ID: XZA88213307 · Group: AZ-0092 · Primary payer
+          Member ID: <span className={markClass('member-id')}>XZA88213307</span> · Group:{' '}
+          <span className={markClass('group-number')}>AZ-0092</span> ·{' '}
+          <span className={markClass('payer-index')}>Primary payer</span>
           <br />
-          Payer ICN: 2026230118804 · Date of service: 07/09/2026
+          Payer ICN: <span className={markClass('payer-icn')}>2026230118804</span> · Date of
+          service: <span className={markClass('date-of-service')}>07/09/2026</span>
           <br />
-          Services: 97110 ×2, 97140 ×2, 97530 ×1 · Billed: $361.23
+          Services: <span className={markClass('cpts')}>97110 ×2, 97140 ×2, 97530 ×1</span> ·
+          Billed: <span className={markClass('billed')}>$361.23</span>
           <br />
-          Denial: Medical necessity (CO-50); Prior authorization (CO-197); Underpayment /
-          contracted rate (CO-45) · Remit 08/18/2026
+          Denial:{' '}
+          <span className={markClass('denial-type')}>
+            Medical necessity (CO-50); Prior authorization (CO-197); Underpayment / contracted rate
+            (CO-45)
+          </span>{' '}
+          · Remit <span className={markClass('remit-date')}>08/18/2026</span>
         </p>
         <p>
           Dear Appeals / Medical Review Department,
@@ -569,9 +595,9 @@ function CoverLetterPage({
         <p>
           Sincerely,
           <br />
-          Appeals Team
+          <span className={markClass('signer')}>Appeals Team</span>
           <br />
-          Ridgeview Physical Therapy
+          <span className={markClass('practice')}>Ridgeview Physical Therapy</span>
         </p>
       </div>
     </article>
@@ -652,6 +678,8 @@ function CoverLetterDocumentPreview({
 export function AppealCoverLetter() {
   const [activePiece, setActivePiece] = useState<string | null>(null)
   const [activeDocument, setActiveDocument] = useState<AppealDocument | null>(null)
+  const [activeField, setActiveField] = useState<string | null>(null)
+  const [activePreview, setActivePreview] = useState<AppealPreviewTab>('package')
   const [paragraphs, setParagraphs] = useState<CoverParagraph[]>(DEFAULT_PARAGRAPHS)
 
   function addParagraph() {
@@ -675,30 +703,58 @@ export function AppealCoverLetter() {
   return (
     <div className="appeal-cover">
       <section className="appeal-cover__controls">
-        <AppealDocumentationWidget
-          defaultOpen={false}
-          sectionId="appeal-section-cover-documentation"
-          variant="attached"
-          activeDocumentId={activeDocument?.id ?? null}
-          onOpenDocument={setActiveDocument}
-        />
         <ArgumentCard
           paragraphs={paragraphs}
           onAddParagraph={addParagraph}
           onDeleteParagraph={deleteParagraph}
           onHighlight={setActivePiece}
         />
-        <AppealWidgetForms />
+        <AppealFieldFocusProvider onActiveFieldChange={setActiveField}>
+          <AppealWidgetForms />
+        </AppealFieldFocusProvider>
       </section>
       <section className="appeal-cover__preview">
-        {activeDocument ? (
-          <CoverLetterDocumentPreview
-            document={activeDocument}
-            onClose={() => setActiveDocument(null)}
-          />
-        ) : (
-          <CoverLetterPage activePiece={activePiece} paragraphs={paragraphs} />
-        )}
+        <AppealPreviewTabs
+          value={activePreview}
+          onChange={(tab) => {
+            setActivePreview(tab)
+            if (tab !== 'documentation') setActiveDocument(null)
+          }}
+        />
+        {activePreview === 'package' ? <AppealPdfBar /> : null}
+        <div
+          id={`appeal-preview-panel-${activePreview}`}
+          className={
+            activePreview === 'package'
+              ? 'appeal-cover__preview-content'
+              : 'appeal-cover__preview-content appeal-cover__preview-content--flush'
+          }
+          role="tabpanel"
+          aria-labelledby={`appeal-preview-tab-${activePreview}`}
+        >
+          {activePreview === 'package' ? (
+            <CoverLetterPage
+              activePiece={activePiece}
+              activeField={activeField}
+              paragraphs={paragraphs}
+            />
+          ) : activePreview === 'claim' ? (
+            <ClaimDetailsSplitContent />
+          ) : activeDocument ? (
+            <CoverLetterDocumentPreview
+              document={activeDocument}
+              onClose={() => setActiveDocument(null)}
+            />
+          ) : (
+            <AppealDocumentationWidget
+              sectionId="appeal-preview-documentation"
+              variant="attached"
+              hideHeader
+              activeDocumentId={null}
+              onOpenDocument={setActiveDocument}
+            />
+          )}
+        </div>
       </section>
     </div>
   )

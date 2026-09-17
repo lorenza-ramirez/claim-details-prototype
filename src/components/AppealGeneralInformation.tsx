@@ -457,12 +457,14 @@ export function AppealDocumentationWidget({
   defaultOpen = true,
   sectionId = 'appeal-section-documentation',
   variant = 'select',
+  hideHeader = false,
   activeDocumentId,
   onOpenDocument,
 }: {
   defaultOpen?: boolean
   sectionId?: string
   variant?: 'select' | 'attached'
+  hideHeader?: boolean
   activeDocumentId?: string | null
   onOpenDocument?: (document: AppealDocument) => void
 }) {
@@ -512,8 +514,8 @@ export function AppealDocumentationWidget({
       ]
         .filter(Boolean)
         .join(' ')}
-      aria-labelledby={titleId}
-      {...(!open
+      {...(hideHeader ? { 'aria-label': 'Documentation' } : { 'aria-labelledby': titleId })}
+      {...(!hideHeader && !open
         ? {
             role: 'button',
             tabIndex: 0,
@@ -529,7 +531,7 @@ export function AppealDocumentationWidget({
           }
         : {})}
     >
-      <header className="appeal-docs__title-row">
+      {hideHeader ? null : <header className="appeal-docs__title-row">
         {open ? (
           <button
             type="button"
@@ -565,9 +567,9 @@ export function AppealDocumentationWidget({
             <span className="appeal-docs__count">{selected.length} selected</span>
           </>
         )}
-      </header>
+      </header>}
 
-      {open ? (
+      {hideHeader || open ? (
       <div id={bodyId} className="appeal-docs__body">
         {attached ? null : (
           <div className="appeal-docs__upload">

@@ -1,23 +1,60 @@
-import { useId, useState, type ReactNode } from 'react'
+import { createContext, useContext, useId, useState, type ReactNode } from 'react'
 import { widgetArrowDown } from '../assets/icons'
 import appealFieldCalendar from '../assets/figma/appeal-field-calendar.svg'
 import appealFieldClose from '../assets/figma/appeal-field-close.svg'
 import appealFieldDropdown from '../assets/figma/appeal-field-dropdown.svg'
 import appealFieldPhone from '../assets/figma/appeal-field-phone.svg'
 
+const ActiveFieldContext = createContext<(fieldId: string | null) => void>(() => {})
+
+/** Reports which appeal field has focus so a preview can highlight the matching content. */
+export function AppealFieldFocusProvider({
+  onActiveFieldChange,
+  children,
+}: {
+  onActiveFieldChange: (fieldId: string | null) => void
+  children: ReactNode
+}) {
+  return (
+    <ActiveFieldContext.Provider value={onActiveFieldChange}>
+      {children}
+    </ActiveFieldContext.Provider>
+  )
+}
+
+/** tabIndex lets a click land on the wrapper itself, so fields without an input still report focus. */
+function useFieldHighlight(fieldId?: string) {
+  const setActiveField = useContext(ActiveFieldContext)
+  if (!fieldId) return null
+  return {
+    tabIndex: -1,
+    onFocus: () => setActiveField(fieldId),
+    onBlur: () => setActiveField(null),
+  }
+}
+
 type FieldProps = {
   label: string
   value: string
   icon?: string
   alignEnd?: boolean
+  fieldId?: string
   children?: ReactNode
 }
 
-function AppealFormField({ label, value, icon, alignEnd = false, children }: FieldProps) {
+export function AppealFormField({
+  label,
+  value,
+  icon,
+  alignEnd = false,
+  fieldId,
+  children,
+}: FieldProps) {
   const id = useId()
+  const highlight = useFieldHighlight(fieldId)
 
   return (
-    <div className="appeal-form-field">
+    <div className="appeal-form-field" {...highlight}>
       {children ?? (
         <div className="appeal-form-field__control">
           {icon && icon !== appealFieldCalendar ? (
@@ -46,15 +83,18 @@ function AppealSelectField({
   label,
   value,
   options,
+  fieldId,
 }: {
   label: string
   value: string
   options: string[]
+  fieldId?: string
 }) {
   const id = useId()
+  const highlight = useFieldHighlight(fieldId)
 
   return (
-    <div className="appeal-form-field">
+    <div className="appeal-form-field" {...highlight}>
       <select id={id} className="appeal-form-field__input appeal-form-field__select" defaultValue={value}>
         {options.map((option) => (
           <option key={option}>{option}</option>
@@ -74,11 +114,20 @@ function AppealSelectField({
   )
 }
 
-function AppealTagField({ label, initialTags }: { label: string; initialTags: string[] }) {
+function AppealTagField({
+  label,
+  initialTags,
+  fieldId,
+}: {
+  label: string
+  initialTags: string[]
+  fieldId?: string
+}) {
   const [tags, setTags] = useState(initialTags)
+  const highlight = useFieldHighlight(fieldId)
 
   return (
-    <div className="appeal-form-field appeal-form-field--tags">
+    <div className="appeal-form-field appeal-form-field--tags" {...highlight}>
       <div className="appeal-form-field__tags" aria-label={label}>
         {tags.map((tag) => (
           <span key={tag} className="appeal-form-field__tag">
@@ -150,50 +199,122 @@ export function AppealWidgetForms() {
   return (
     <>
       <AppealFormCard id="appeal-section-claim-denial" title="Claim and Denial Values">
-        <AppealFormField label="Patient" value="Jz Testform Test" />
-        <AppealFormField label="DOB" value="11/22/1971" icon={appealFieldCalendar} />
-        <AppealFormField label="Member ID" value="XZA88213307" />
-        <AppealFormField label="Group Number" value="AZ-0092" />
-        <AppealFormField label="Claim / submission" value="22169011 / SUB-9077110" />
-        <AppealFormField label="Payer ICN" value="2026230118804" alignEnd />
-        <AppealFormField label="Date of service" value="07/09/2026" icon={appealFieldCalendar} />
-        <AppealTagField label="CPTs" initialTags={['97110 ×2', '97140 ×2', '97530 ×1']} />
-        <AppealFormField label="Billed" value="$361.23" alignEnd />
+        <AppealFormField label="Patient" value="Jz Testform Test" fieldId="patient" />
+        <AppealFormField
+          label="DOB"
+          value="11/22/1971"
+          icon={appealFieldCalendar}
+          fieldId="dob"
+        />
+        <AppealFormField label="Member ID" value="XZA88213307" fieldId="member-id" />
+        <AppealFormField label="Group Number" value="AZ-0092" fieldId="group-number" />
+        <AppealFormField
+          label="Claim / submission"
+          value="22169011 / SUB-9077110"
+          fieldId="claim-submission"
+        />
+        <AppealFormField
+          label="Payer ICN"
+          value="2026230118804"
+          alignEnd
+          fieldId="payer-icn"
+        />
+        <AppealFormField
+          label="Date of service"
+          value="07/09/2026"
+          icon={appealFieldCalendar}
+          fieldId="date-of-service"
+        />
+        <AppealTagField
+          label="CPTs"
+          initialTags={['97110 ×2', '97140 ×2', '97530 ×1']}
+          fieldId="cpts"
+        />
+        <AppealFormField label="Billed" value="$361.23" alignEnd fieldId="billed" />
         <AppealTagField
           label="Denial Type"
           initialTags={['Medical necessity (CO-50)', 'Prior authorization (CO-197)']}
+          fieldId="denial-type"
         />
-        <AppealFormField label="Remit date" value="08/18/2026" icon={appealFieldCalendar} />
-        <AppealFormField label="Appeal level" value="First-level appeal" />
-        <AppealSelectField label="Payer index" value="Primary" options={['Primary', 'Secondary']} />
+        <AppealFormField
+          label="Remit date"
+          value="08/18/2026"
+          icon={appealFieldCalendar}
+          fieldId="remit-date"
+        />
+        <AppealFormField
+          label="Appeal level"
+          value="First-level appeal"
+          fieldId="appeal-level"
+        />
+        <AppealSelectField
+          label="Payer index"
+          value="Primary"
+          options={['Primary', 'Secondary']}
+          fieldId="payer-index"
+        />
         <AppealFormField
           label="Payer"
           value="BCBS Arizona · Appeals / Medical Review Department"
+          fieldId="payer"
         />
-        <AppealFormField label="Date" value="09/08/2026" icon={appealFieldCalendar} />
+        <AppealFormField
+          label="Date"
+          value="09/08/2026"
+          icon={appealFieldCalendar}
+          fieldId="date"
+        />
       </AppealFormCard>
 
       <AppealFormCard id="appeal-section-from" title="From · site defaults">
-        <AppealFormField label="Practice" value="Athelas WPT Physical Therapy" />
-        <AppealFormField label="Provider" value="Dr. Kevin Murar, DPT" />
-        <AppealFormField label="NPI" value="1841234567" alignEnd />
-        <AppealFormField label="TIN" value="84-2210987" alignEnd />
+        <AppealFormField
+          label="Practice"
+          value="Athelas WPT Physical Therapy"
+          fieldId="practice"
+        />
+        <AppealFormField label="Provider" value="Dr. Kevin Murar, DPT" fieldId="provider" />
+        <AppealFormField label="NPI" value="1841234567" alignEnd fieldId="npi" />
+        <AppealFormField label="TIN" value="84-2210987" alignEnd fieldId="tin" />
         <AppealFormField
           label="Address"
           value="1200 Market St, Suite 400, San Francisco, CA 94102"
+          fieldId="address"
         />
-        <AppealFormField label="Phone" value="(415) 555-0142" icon={appealFieldPhone} />
-        <AppealFormField label="Phone" value="(415) 555-0143" icon={appealFieldPhone} />
-        <AppealFormField label="Signer" value="Maria Lopez, Billing Manager" />
+        <AppealFormField
+          label="Phone"
+          value="(415) 555-0142"
+          icon={appealFieldPhone}
+          fieldId="phone"
+        />
+        <AppealFormField
+          label="Phone"
+          value="(415) 555-0143"
+          icon={appealFieldPhone}
+          fieldId="phone-alt"
+        />
+        <AppealFormField
+          label="Signer"
+          value="Maria Lopez, Billing Manager"
+          fieldId="signer"
+        />
       </AppealFormCard>
 
       <AppealFormCard id="appeal-section-request" title="Request">
-        <AppealFormField label="Requested Action" value="reprocess and pay $300.13" />
+        <AppealFormField
+          label="Requested Action"
+          value="reprocess and pay $300.13"
+          fieldId="requested-action"
+        />
         <AppealFormField
           label="Filing window"
           value="within the appeal window ending 11/16/2026"
+          fieldId="filing-window"
         />
-        <AppealFormField label="Tracking ref" value="APL-22169011-1" />
+        <AppealFormField
+          label="Tracking ref"
+          value="APL-22169011-1"
+          fieldId="tracking-ref"
+        />
       </AppealFormCard>
     </>
   )

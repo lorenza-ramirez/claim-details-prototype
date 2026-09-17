@@ -24,7 +24,6 @@ type SubmissionRow = {
   memberId: string
   type: string
   method: string
-  appealEnabled: boolean
 }
 
 /** Synthetic demo submissions — not real PHI/PII. */
@@ -41,7 +40,6 @@ const ROWS: SubmissionRow[] = [
     memberId: 'BQ60358Y',
     type: 'Initial',
     method: 'CHC',
-    appealEnabled: false,
   },
   {
     id: 'ARC680055',
@@ -55,7 +53,6 @@ const ROWS: SubmissionRow[] = [
     memberId: 'BQ60358Y',
     type: 'Resubmission',
     method: 'CHC',
-    appealEnabled: false,
   },
   {
     id: 'ARC680055',
@@ -69,7 +66,6 @@ const ROWS: SubmissionRow[] = [
     memberId: 'BQ60358Y',
     type: 'Initial',
     method: 'CHC',
-    appealEnabled: true,
   },
 ]
 
@@ -222,12 +218,7 @@ export function SubmissionsWidget({ hideHeader = false }: { hideHeader?: boolean
                 <td className="submissions-widget__td submissions-widget__td--action">
                   <button
                     type="button"
-                    className={
-                      row.appealEnabled
-                        ? 'submissions-widget__appeal'
-                        : 'submissions-widget__appeal submissions-widget__appeal--disabled'
-                    }
-                    disabled={!row.appealEnabled}
+                    className="submissions-widget__appeal"
                     onClick={(event) => {
                       event.stopPropagation()
                       setAppealOpen(true)
