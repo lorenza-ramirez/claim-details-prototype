@@ -1,11 +1,9 @@
 import { useState, type ReactNode } from 'react'
 import appealAdd from '../assets/figma/appeal-add.svg'
-import appealRadioSelected from '../assets/figma/appeal-radio-selected.svg'
-import appealRadioUnselected from '../assets/figma/appeal-radio-unselected.svg'
 import { keyboardArrowDown, keyboardArrowUp, widgetArrowDown } from '../assets/icons'
 import { AppealPdfBar, AppealPreviewTabs } from './AppealPreviewChrome'
 
-export type AppealSendChannel = 'fax' | 'mail' | 'download'
+export const APPEAL_DOWNLOAD_ACTION_LABEL = 'Download packet'
 
 type ConfirmPreviewTab = 'summary' | 'package'
 
@@ -13,12 +11,6 @@ const CONFIRM_PREVIEW_TABS: { id: ConfirmPreviewTab; label: string }[] = [
   { id: 'summary', label: 'Summary' },
   { id: 'package', label: 'Package' },
 ]
-
-export const APPEAL_SEND_ACTION_LABEL: Record<AppealSendChannel, string> = {
-  fax: 'Send by fax',
-  mail: 'Send by mail',
-  download: 'Download packet',
-}
 
 type PacketAction = 'edit' | 'view' | 'remove'
 type PacketKind = 'pdf' | 'doc'
@@ -47,19 +39,108 @@ const ACTION_LABEL: Record<PacketAction, string> = {
   remove: 'Remove',
 }
 
-const SEND_OPTIONS: { id: AppealSendChannel; label: string; detail: string }[] = [
-  { id: 'fax', label: 'Fax', detail: "(602) 555-0199 · transmitted to the payer's appeal fax" },
-  {
-    id: 'mail',
-    label: 'Mail sent by Athelas',
-    detail: 'BCBSAZ Appeals, PO Box 13466, Phoenix, AZ 85002 · ~$1.05',
-  },
-  {
-    id: 'download',
-    label: 'Download — I send it myself',
-    detail: 'Nothing is confirmed by Athelas · $0',
-  },
-]
+function ConfirmSummaryField({
+  label,
+  value,
+  note,
+}: {
+  label: string
+  value: string
+  note?: string
+}) {
+  return (
+    <div className="claim-details-widget__field">
+      <span className="claim-details-widget__label claim-details-widget__label--truncate">{label}</span>
+      <span className="claim-details-widget__value">
+        <span className="claim-details-widget__value-text">{value}</span>
+        {note ? <span className="appeal-confirm__summary-note">{note}</span> : null}
+      </span>
+    </div>
+  )
+}
+
+function PacketSummaryWidget({
+  packetCount,
+  pageCount,
+}: {
+  packetCount: number
+  pageCount: number
+}) {
+  const [open, setOpen] = useState(true)
+
+  return (
+    <section
+      className={open ? 'appeal-docs' : 'appeal-docs appeal-docs--collapsed'}
+      aria-labelledby="appeal-summary-title"
+    >
+      <header className="appeal-docs__title-row">
+        <button
+          type="button"
+          className="appeal-docs__toggle"
+          aria-expanded={open}
+          aria-controls="appeal-summary-body"
+          onClick={() => setOpen((value) => !value)}
+        >
+          <span className="appeal-submission__title-btn">
+            <h3 id="appeal-summary-title">Summary</h3>
+            <img
+              src={widgetArrowDown}
+              alt=""
+              width={20}
+              height={20}
+              className={
+                open
+                  ? 'appeal-submission__chevron appeal-submission__chevron--up'
+                  : 'appeal-submission__chevron'
+              }
+            />
+          </span>
+        </button>
+      </header>
+
+      {open ? (
+        <div id="appeal-summary-body" className="appeal-docs__body">
+          <div className="claim-details-widget__grid">
+            <div className="claim-details-widget__col claim-details-widget__col--gap">
+              <ConfirmSummaryField label="Payer" value="BCBS Arizona" />
+              <ConfirmSummaryField label="Payer Index" value="Primary" />
+              <ConfirmSummaryField label="Submission" value="SUB-9077110" />
+              <ConfirmSummaryField label="Disputing" value="$279.23" />
+              <ConfirmSummaryField label="Procedures" value="97110, 97140" />
+              <ConfirmSummaryField
+                label="Medical necessity"
+                value="Medical necessity v3"
+                note="Athelas default"
+              />
+              <ConfirmSummaryField label="Delivery" value="Download packet" />
+              <ConfirmSummaryField label="Documents" value={`${packetCount} documents`} />
+            </div>
+            <div className="claim-details-widget__col claim-details-widget__col--gap">
+              <ConfirmSummaryField label="Type" value="Appeal · level 1" />
+              <ConfirmSummaryField label="Reference" value="APL-22169811–1" />
+              <ConfirmSummaryField label="Deadline" value="11/16/2026" note="69 days left" />
+              <ConfirmSummaryField
+                label="Denial type"
+                value="Medical necessity, Prior authorization"
+              />
+              <ConfirmSummaryField label="Ops tickets" value="Wrong payer form reported" />
+              <ConfirmSummaryField
+                label="Prior authorization"
+                value="Prior authorization v2"
+                note="Athelas default"
+              />
+              <ConfirmSummaryField
+                label="Confirmation"
+                value="Nothing is confirmed by Athelas · $0"
+              />
+              <ConfirmSummaryField label="Pages" value={`${pageCount} pages`} />
+            </div>
+          </div>
+        </div>
+      ) : null}
+    </section>
+  )
+}
 
 function PacketFileIcon({ kind }: { kind: PacketKind }) {
   return (
@@ -206,80 +287,6 @@ function PacketContentsWidget({
   )
 }
 
-function SendViaWidget({
-  channel,
-  onChannelChange,
-}: {
-  channel: AppealSendChannel
-  onChannelChange: (channel: AppealSendChannel) => void
-}) {
-  const [open, setOpen] = useState(true)
-
-  return (
-    <section
-      className={open ? 'appeal-submission' : 'appeal-submission appeal-submission--collapsed'}
-      aria-labelledby="appeal-send-via-title"
-    >
-      <header className="appeal-submission__title-row">
-        <button
-          type="button"
-          className="appeal-submission__title-btn"
-          aria-expanded={open}
-          aria-controls="appeal-send-via-body"
-          onClick={() => setOpen((value) => !value)}
-        >
-          <h3 id="appeal-send-via-title">Send via</h3>
-          <img
-            src={widgetArrowDown}
-            alt=""
-            width={20}
-            height={20}
-            className={
-              open
-                ? 'appeal-submission__chevron appeal-submission__chevron--up'
-                : 'appeal-submission__chevron'
-            }
-          />
-        </button>
-      </header>
-
-      {open ? (
-        <div
-          id="appeal-send-via-body"
-          className="appeal-submission__body appeal-confirm__send-options"
-          role="radiogroup"
-          aria-label="Send via"
-        >
-          {SEND_OPTIONS.map((option) => {
-            const checked = channel === option.id
-            return (
-              <label key={option.id} className="appeal-submission__radio">
-                <input
-                  type="radio"
-                  name="appeal-send-via"
-                  value={option.id}
-                  checked={checked}
-                  onChange={() => onChannelChange(option.id)}
-                />
-                <img
-                  src={checked ? appealRadioSelected : appealRadioUnselected}
-                  alt=""
-                  width={28}
-                  height={28}
-                />
-                <span>
-                  {option.label}
-                  <span className="appeal-confirm__radio-detail">{option.detail}</span>
-                </span>
-              </label>
-            )
-          })}
-        </div>
-      ) : null}
-    </section>
-  )
-}
-
 function SummaryField({ label, value, note }: { label: string; value: string; note?: string }) {
   return (
     <div className="claim-details-split__field">
@@ -332,11 +339,9 @@ function SummarySubsection({
 }
 
 function AppealSummaryPanel({
-  channel,
   packet,
   pageCount,
 }: {
-  channel: AppealSendChannel
   packet: PacketDocument[]
   pageCount: number
 }) {
@@ -349,7 +354,6 @@ function AppealSummaryPanel({
 
   const sectionKeys = ['submission', 'dispute', 'prompts', 'delivery'] as const
   const allExpanded = sectionKeys.every((key) => openSections[key])
-  const selectedOption = SEND_OPTIONS.find((option) => option.id === channel)
 
   function toggle(key: string) {
     setOpenSections((current) => ({ ...current, [key]: !current[key] }))
@@ -436,8 +440,8 @@ function AppealSummaryPanel({
         >
           <div className="claim-details-split__grid">
             <div className="claim-details-split__col">
-              <SummaryField label="Sending via" value={selectedOption?.label ?? '—'} />
-              <SummaryField label="Destination" value={selectedOption?.detail ?? '—'} />
+              <SummaryField label="Delivery" value="Download packet" />
+              <SummaryField label="Confirmation" value="Nothing is confirmed by Athelas · $0" />
             </div>
             <div className="claim-details-split__col">
               <SummaryField label="Documents" value={`${packet.length} documents`} />
@@ -479,18 +483,12 @@ function PackagePaper({ packet }: { packet: PacketDocument[] }) {
           </div>
         ))}
       </dl>
-      <footer>Mail: BCBSAZ Appeals, PO Box 13466, Phoenix, AZ 85002</footer>
+      <footer>Download packet · nothing is confirmed by Athelas</footer>
     </div>
   )
 }
 
-export function AppealConfirmSubmit({
-  channel,
-  onChannelChange,
-}: {
-  channel: AppealSendChannel
-  onChannelChange: (channel: AppealSendChannel) => void
-}) {
+export function AppealConfirmSubmit() {
   const [packet, setPacket] = useState(INITIAL_PACKET)
   const [activePreview, setActivePreview] = useState<ConfirmPreviewTab>('summary')
   const [addedCount, setAddedCount] = useState(0)
@@ -526,13 +524,13 @@ export function AppealConfirmSubmit({
   return (
     <div className="appeal-confirm">
       <div className="appeal-general appeal-confirm__controls">
+        <PacketSummaryWidget packetCount={packet.length} pageCount={pageCount} />
         <PacketContentsWidget
           packet={packet}
           onMove={moveDocument}
           onRemove={(id) => setPacket((current) => current.filter((item) => item.id !== id))}
           onAdd={addDocument}
         />
-        <SendViaWidget channel={channel} onChannelChange={onChannelChange} />
       </div>
 
       <section className="appeal-confirm__preview" aria-label="Appeal package preview">
@@ -555,7 +553,7 @@ export function AppealConfirmSubmit({
           {activePreview === 'package' ? (
             <PackagePaper packet={packet} />
           ) : (
-            <AppealSummaryPanel channel={channel} packet={packet} pageCount={pageCount} />
+            <AppealSummaryPanel packet={packet} pageCount={pageCount} />
           )}
         </div>
       </section>

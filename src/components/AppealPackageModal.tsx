@@ -15,11 +15,7 @@ import appealPayerForm from '../assets/figma/appeal-payer-form.svg'
 import appealSend from '../assets/figma/appeal-send.svg'
 import { leftPanelClose } from '../assets/icons'
 import { AppealAiAssistant } from './AppealAiAssistant'
-import {
-  APPEAL_SEND_ACTION_LABEL,
-  AppealConfirmSubmit,
-  type AppealSendChannel,
-} from './AppealConfirmSubmit'
+import { APPEAL_DOWNLOAD_ACTION_LABEL, AppealConfirmSubmit } from './AppealConfirmSubmit'
 import { AppealCoverLetter } from './AppealCoverLetter'
 import { AppealGeneralInformation } from './AppealGeneralInformation'
 import { AppealPayerForm } from './AppealPayerForm'
@@ -51,7 +47,6 @@ export function AppealPackageModal({ onClose }: { onClose: () => void }) {
   const [activeStep, setActiveStep] = useState(0)
   const [controlsCollapsed, setControlsCollapsed] = useState(false)
   const [aiOpen, setAiOpen] = useState(false)
-  const [sendChannel, setSendChannel] = useState<AppealSendChannel>('mail')
 
   function toggleAiPanel() {
     if (!aiOpen) setControlsCollapsed(true)
@@ -242,7 +237,7 @@ export function AppealPackageModal({ onClose }: { onClose: () => void }) {
                     className="btn btn--primary appeal-package__continue"
                     onClick={onClose}
                   >
-                    {APPEAL_SEND_ACTION_LABEL[sendChannel]}
+                    {APPEAL_DOWNLOAD_ACTION_LABEL}
                   </button>
                 )}
               </header>
@@ -264,10 +259,7 @@ export function AppealPackageModal({ onClose }: { onClose: () => void }) {
                 ) : activeStep === 2 ? (
                   <AppealPayerForm />
                 ) : (
-                  <AppealConfirmSubmit
-                    channel={sendChannel}
-                    onChannelChange={setSendChannel}
-                  />
+                  <AppealConfirmSubmit />
                 )}
               </div>
             </section>

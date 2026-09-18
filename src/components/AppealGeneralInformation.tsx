@@ -64,13 +64,6 @@ const PROCEDURES: ProcedureRow[] = [
   },
 ]
 
-const DENIAL_OPTIONS = [
-  { id: 'all', label: 'Run all and integrate', recommended: true },
-  { id: 'medical', label: 'Argue only Medical necessity | CO-50, CO-151' },
-  { id: 'auth', label: 'Argue only Prior authorization | CO-197, CO-198' },
-  { id: 'rate', label: 'Argue only Underpayment/contracted rate | CO-45' },
-] as const
-
 type DocCategory = 'all' | 'patient' | 'chartNote' | 'medicalFile' | 'fax'
 type FileKind = 'pdf' | 'image' | 'doc'
 
@@ -183,12 +176,14 @@ function CollapsibleCard({
   children,
   defaultOpen = true,
   id,
+  badge,
 }: {
   title: string
   titleId: string
   children: ReactNode
   defaultOpen?: boolean
   id?: string
+  badge?: ReactNode
 }) {
   const [open, setOpen] = useState(defaultOpen)
   const bodyId = `${titleId}-body`
@@ -196,6 +191,8 @@ function CollapsibleCard({
   function toggle() {
     setOpen((value) => !value)
   }
+
+  const badgeEl = badge ? <span className="appeal-docs__count">{badge}</span> : null
 
   const titleContent = (
     <>
@@ -235,19 +232,33 @@ function CollapsibleCard({
           }
         : {})}
     >
-      <header className="appeal-submission__title-row">
+      <header
+        className={
+          badge
+            ? 'appeal-submission__title-row appeal-submission__title-row--with-badge'
+            : 'appeal-submission__title-row'
+        }
+      >
         {open ? (
           <button
             type="button"
-            className="appeal-submission__title-btn"
+            className={
+              badge
+                ? 'appeal-submission__title-btn appeal-submission__title-btn--with-badge'
+                : 'appeal-submission__title-btn'
+            }
             aria-expanded
             aria-controls={bodyId}
             onClick={toggle}
           >
             {titleContent}
+            {badgeEl}
           </button>
         ) : (
-          <div className="appeal-submission__title-btn">{titleContent}</div>
+          <>
+            <div className="appeal-submission__title-btn">{titleContent}</div>
+            {badgeEl}
+          </>
         )}
       </header>
       {open ? (
@@ -359,18 +370,42 @@ function ProcedureStateBadge({ state }: { state: ProcedureState }) {
 }
 
 function AppealProceduresWidget() {
-  const [denialType, setDenialType] = useState<(typeof DENIAL_OPTIONS)[number]['id']>('all')
+  const [selected, setSelected] = useState<string[]>(() => PROCEDURES.map((row) => row.id))
+  const allSelected = selected.length === PROCEDURES.length
+  const someSelected = selected.length > 0 && !allSelected
+
+  function toggleAll() {
+    setSelected(allSelected ? [] : PROCEDURES.map((row) => row.id))
+  }
+
+  function toggleRow(id: string) {
+    setSelected((current) =>
+      current.includes(id) ? current.filter((item) => item !== id) : [...current, id],
+    )
+  }
 
   return (
     <CollapsibleCard
       id="appeal-section-procedures"
       title="Procedures on this submission"
       titleId="appeal-procedures-title"
+      badge="Run All (Recommended)"
     >
       <div className="appeal-procedure__table-wrap">
         <table className="appeal-procedure__table">
           <thead>
             <tr>
+              <th className="appeal-procedure__th appeal-procedure__th--check" scope="col">
+                <input
+                  type="checkbox"
+                  checked={allSelected}
+                  ref={(node) => {
+                    if (node) node.indeterminate = someSelected
+                  }}
+                  onChange={toggleAll}
+                  aria-label="Select all procedures"
+                />
+              </th>
               <th className="appeal-procedure__th appeal-procedure__th--code" scope="col">
                 <span>Procedure</span>
                 <img src={submissionsSortDown} alt="" width={16} height={16} />
@@ -395,6 +430,14 @@ function AppealProceduresWidget() {
           <tbody>
             {PROCEDURES.map((row) => (
               <tr key={row.id}>
+                <td className="appeal-procedure__td appeal-procedure__td--check">
+                  <input
+                    type="checkbox"
+                    checked={selected.includes(row.id)}
+                    onChange={() => toggleRow(row.id)}
+                    aria-label={`Select procedure ${row.code}`}
+                  />
+                </td>
                 <td className="appeal-procedure__td">{row.code}</td>
                 <td className="appeal-procedure__td">
                   <ProcedureStateBadge state={row.state} />
@@ -416,24 +459,6 @@ function AppealProceduresWidget() {
             ))}
           </tbody>
         </table>
-      </div>
-
-      <p className="appeal-procedure__denial-title">Denial Type</p>
-      <div className="appeal-procedure__denials" role="radiogroup" aria-label="Denial type">
-        {DENIAL_OPTIONS.map((option) => (
-          <AppealRadio
-            key={option.id}
-            name="appeal-denial-type"
-            value={option.id}
-            checked={denialType === option.id}
-            onChange={() => setDenialType(option.id)}
-          >
-            {option.label}
-            {'recommended' in option && option.recommended ? (
-              <strong> (recommended)</strong>
-            ) : null}
-          </AppealRadio>
-        ))}
       </div>
     </CollapsibleCard>
   )
