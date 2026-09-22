@@ -3707,12 +3707,369 @@ button.claim-details-widget__value {
   line-height: 16px;
 }
 
+.appeal-confirm-v2 {
+  display: grid;
+  grid-template-columns: minmax(420px, 1fr) minmax(620px, 50vw);
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  font-family: var(--font-satoshi);
+}
+
+.appeal-confirm-v2__controls {
+  min-width: 0;
+  min-height: 0;
+  max-width: none;
+  margin: 0;
+  overflow: auto;
+  padding: 0 16px 24px;
+  border-right: 1px solid var(--outline);
+  background: var(--bg-base);
+}
+
+.appeal-confirm-v2__controls .appeal-widget__header {
+  min-height: 48px;
+}
+
+.appeal-confirm-v2__controls .appeal-confirm-v2__widget-body {
+  gap: 16px;
+  padding: 12px 16px 16px;
+}
+
+.appeal-confirm-v2__delivery-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 24px;
+  row-gap: 8px;
+}
+
+.appeal-confirm-v2__delivery-option {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  color: var(--text-neutral);
+  font-family: var(--font-satoshi);
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 22px;
+  cursor: pointer;
+}
+
+.appeal-confirm-v2__delivery-option input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.appeal-confirm-v2__delivery-option img {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+.appeal-confirm-v2__delivery-option:focus-within {
+  color: var(--accent);
+}
+
+.appeal-confirm-v2__delivery-option:focus-within img {
+  border-radius: 50%;
+  box-shadow: 0 0 0 2px var(--accent-a20);
+}
+
+.appeal-confirm-v2__destination {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 2px;
+}
+
+.appeal-confirm-v2__destination > p {
+  margin: 0;
+  color: #666666;
+  font-family: var(--font-satoshi);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 22px;
+}
+
+.appeal-confirm-v2__address-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 12px;
+}
+
+.appeal-confirm-v2__field {
+  width: 100%;
+  min-width: 0;
+  height: 48px;
+  padding: 0 12px;
+  border: 1px solid var(--outline);
+  border-radius: 6px;
+  background: var(--bg-base);
+  color: var(--text-neutral);
+  font: 400 16px/24px var(--font-satoshi);
+  box-sizing: border-box;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.appeal-confirm-v2__field--half {
+  width: calc(50% - 6px);
+}
+
+.appeal-confirm-v2__field::placeholder {
+  color: #999999;
+}
+
+.appeal-confirm-v2__field:hover {
+  border-color: #999999;
+}
+
+.appeal-confirm-v2__field:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+  outline: none;
+}
+
+.appeal-confirm-v2__summary-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 20px;
+}
+
+.appeal-confirm-v2__summary-column {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  min-width: 0;
+}
+
+.appeal-confirm-v2__summary-field {
+  display: grid;
+  grid-template-columns: minmax(96px, 40%) minmax(0, 1fr);
+  align-items: baseline;
+  gap: 12px;
+  min-width: 0;
+  font-family: var(--font-satoshi);
+  font-size: 14px;
+  line-height: 24px;
+}
+
+.appeal-confirm-v2__summary-field > span {
+  overflow: hidden;
+  color: #666666;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.appeal-confirm-v2__summary-field > strong {
+  overflow: hidden;
+  color: var(--text-neutral);
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.appeal-confirm-v2__table-wrap {
+  overflow: hidden;
+  border: 1px solid var(--outline);
+  border-radius: 8px;
+}
+
+.appeal-confirm-v2__table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-family: var(--font-satoshi);
+  font-size: 14px;
+  line-height: 24px;
+}
+
+.appeal-confirm-v2__table th,
+.appeal-confirm-v2__table td {
+  height: 48px;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--outline);
+  box-sizing: border-box;
+  text-align: left;
+  vertical-align: middle;
+}
+
+.appeal-confirm-v2__table thead th {
+  height: 42px;
+  background: #f7f7f7;
+  color: #000000;
+  font-weight: 500;
+}
+
+.appeal-confirm-v2__table th:first-child {
+  width: auto;
+}
+
+.appeal-confirm-v2__table th:nth-child(2),
+.appeal-confirm-v2__table td:nth-child(2) {
+  width: 80px;
+  text-align: center;
+}
+
+.appeal-confirm-v2__table th:last-child,
+.appeal-confirm-v2__table td:last-child {
+  width: 140px;
+  padding-left: 8px;
+  padding-right: 10px;
+}
+
+.appeal-confirm-v2__table tr:last-child td {
+  border-bottom: 0;
+}
+
+.appeal-confirm-v2__table th:first-child span {
+  display: inline-flex;
+  align-items: center;
+}
+
+.appeal-confirm-v2__table th:first-child img {
+  vertical-align: middle;
+}
+
+.appeal-confirm-v2__file {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: 8px;
+}
+
+.appeal-confirm-v2__file button {
+  overflow: hidden;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  font: inherit;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.appeal-confirm-v2__row-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 2px;
+}
+
+.appeal-confirm-v2__row-actions button {
+  display: inline-grid;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  place-items: center;
+  background: transparent;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.appeal-confirm-v2__row-actions button:hover:not(:disabled) {
+  background: #f2f2f2;
+}
+
+.appeal-confirm-v2__row-actions button:disabled {
+  opacity: 0.25;
+  cursor: default;
+}
+
+.appeal-confirm-v2__preview {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  background: #f7f7f7;
+}
+
+.appeal-confirm-v2__preview-canvas {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 16px;
+  background: #f7f7f7;
+}
+
+.appeal-confirm-v2__doc-page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  min-height: 925px;
+  padding: 23px 20px 20px;
+  border-radius: var(--radius-soft);
+  background: #ffffff;
+  box-shadow:
+    0 4px 10px rgba(0, 0, 0, 0.12),
+    0 2px 20px 1px rgba(0, 0, 0, 0.1);
+  color: #000000;
+}
+
+.appeal-confirm-v2__doc-page header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.appeal-confirm-v2__doc-page h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 24px;
+}
+
+.appeal-confirm-v2__doc-page header p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 14px;
+  line-height: 22px;
+}
+
+.appeal-confirm-v2__doc-page > p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 22px;
+}
+
+.appeal-confirm-v2__preview-empty {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 14px;
+  line-height: 22px;
+  text-align: center;
+}
+
 @media (max-width: 1100px) {
   .appeal-confirm {
     grid-template-columns: 1fr;
   }
 
   .appeal-confirm__controls {
+    border-right: 0;
+    border-bottom: 1px solid var(--outline);
+  }
+
+  .appeal-confirm-v2 {
+    grid-template-columns: 1fr;
+  }
+
+  .appeal-confirm-v2__controls {
     border-right: 0;
     border-bottom: 1px solid var(--outline);
   }
@@ -3807,12 +4164,6 @@ button.claim-details-widget__value {
 
 .payer-form__change-upload button:hover {
   text-decoration: underline;
-}
-
-.payer-form__change-hint {
-  margin: 0;
-  color: #666666;
-  font: 400 14px/22px var(--font-satoshi);
 }
 
 .payer-form__change-reason-label {
@@ -7332,14 +7683,23 @@ button.claim-details-widget__value {
   gap: 0;
 }
 
-.appeal-general > .appeal-submission,
+.appeal-general {
+  gap: 0;
+  padding: 0 16px 16px;
+  box-sizing: border-box;
+}
+
+.appeal-general > .appeal-widget,
 .appeal-general > .appeal-docs,
+.appeal-cover__controls > .appeal-widget,
 .appeal-cover__controls > .appeal-cover__card,
 .appeal-cover__controls > .appeal-form-widget {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
   gap: 0;
   padding: 0;
   border: 0;
-  border-top: 1px solid var(--outline);
   border-radius: 0;
   background: transparent;
   box-shadow: none;
@@ -7351,8 +7711,8 @@ button.claim-details-widget__value {
   border-top: 0;
 }
 
-.appeal-general > .appeal-submission:hover,
-.appeal-general > .appeal-submission:focus-within,
+.appeal-general > .appeal-widget:hover,
+.appeal-general > .appeal-widget:focus-within,
 .appeal-general > .appeal-docs:hover,
 .appeal-general > .appeal-docs:focus-within,
 .appeal-cover__controls > .appeal-cover__card:hover,
@@ -7363,55 +7723,188 @@ button.claim-details-widget__value {
   box-shadow: none;
 }
 
-.appeal-general .appeal-submission__title-row,
+.appeal-widget__header,
 .appeal-general .appeal-docs__title-row,
 .appeal-cover__controls .appeal-cover__card-header,
 .appeal-cover__controls .appeal-form-widget__toggle {
   min-height: 46px;
   padding: 12px 0;
+  border-bottom: 1px solid var(--outline);
   box-sizing: border-box;
 }
 
-.appeal-general .appeal-submission__title-btn,
+.appeal-widget__toggle,
 .appeal-general .appeal-docs__toggle,
 .appeal-cover__controls .appeal-cover__card-toggle,
 .appeal-cover__controls .appeal-form-widget__toggle {
   gap: 8px;
 }
 
-.appeal-general .appeal-submission__title-btn h3,
+.appeal-widget__toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.appeal-widget__title {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  gap: 8px;
+}
+
+.appeal-widget__title h3,
 .appeal-general .appeal-docs__title-row h3,
 .appeal-cover__controls .appeal-cover__card-toggle,
 .appeal-cover__controls .appeal-form-widget__toggle h3 {
+  margin: 0;
+  color: var(--text-neutral);
+  font-family: var(--font-satoshi);
+  font-size: 14px;
   font-weight: 600;
+  line-height: 22px;
 }
 
-.appeal-general .appeal-submission__chevron,
+.appeal-widget__chevron,
 .appeal-cover__controls .appeal-submission__chevron,
 .appeal-cover__controls .appeal-form-widget__chevron {
+  flex-shrink: 0;
   width: 16px;
   height: 16px;
   padding: 0;
   transform: rotate(-90deg);
+  transition: transform 150ms ease;
 }
 
-.appeal-general .appeal-submission__chevron--up,
+.appeal-widget__chevron--open,
 .appeal-cover__controls .appeal-submission__chevron--up,
 .appeal-cover__controls .appeal-form-widget__chevron--open {
   transform: rotate(0deg);
 }
 
-.appeal-general .appeal-submission__body,
+.appeal-widget__summary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  min-height: 28px;
+  padding: 5px 12px;
+  border-radius: var(--radius-pill);
+  background: rgba(27, 50, 238, 0.08);
+  color: var(--accent);
+  font-family: var(--font-satoshi);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 18px;
+  box-sizing: border-box;
+  white-space: nowrap;
+}
+
+.appeal-widget__body,
 .appeal-general .appeal-docs__body,
 .appeal-cover__controls .appeal-cover__arguments,
 .appeal-cover__controls .appeal-form-widget__grid {
-  padding: 0 0 12px 24px;
+  padding: 12px 0 16px;
   box-sizing: border-box;
+}
+
+.appeal-widget__body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  min-width: 0;
+}
+
+.appeal-widget__body--indented {
+  padding-left: 24px;
 }
 
 .appeal-cover__controls {
   gap: 0;
+  align-items: center;
   padding: 0 16px 16px;
+}
+
+.appeal-cover__controls > .appeal-widget {
+  max-width: 1000px;
+}
+
+.appeal-cover__controls .appeal-widget__body {
+  gap: 16px;
+  padding: 12px 28px 16px;
+}
+
+.appeal-cover__controls .appeal-form-widget__grid {
+  padding: 0;
+}
+
+.appeal-cover__reasoning {
+  gap: 16px;
+}
+
+.appeal-cover__reasoning .appeal-cover__argument-section {
+  height: 89px;
+}
+
+.appeal-cover__reasoning .appeal-cover__prompt {
+  align-items: flex-start;
+  min-height: 89px;
+  box-sizing: border-box;
+}
+
+.appeal-cover__reasoning .appeal-cover__prompt p {
+  height: 100%;
+  -webkit-line-clamp: 3;
+}
+
+.appeal-cover__document-field {
+  position: relative;
+  display: flex;
+  width: 100%;
+  min-width: 0;
+}
+
+.appeal-cover__document-field > span {
+  position: absolute;
+  z-index: 1;
+  top: 0;
+  left: 8px;
+  padding: 0 4px;
+  color: #666666;
+  font: 500 14px/22px var(--font-satoshi);
+  background: var(--bg-base);
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.appeal-cover__document-field textarea {
+  display: block;
+  width: 100%;
+  height: 639px;
+  min-height: 360px;
+  padding: 14px 12px 12px;
+  resize: vertical;
+  overflow: auto;
+  border: 1px solid var(--outline);
+  border-radius: 6px;
+  outline: none;
+  background: var(--bg-base);
+  color: var(--text-neutral);
+  font: 400 14px/22px var(--font-satoshi);
+}
+
+.appeal-cover__document-field textarea:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
 }
 
 .payer-form__fields {

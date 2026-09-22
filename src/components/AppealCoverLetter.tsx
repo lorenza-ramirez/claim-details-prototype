@@ -1,22 +1,17 @@
 import {
-  Fragment,
   useEffect,
   useId,
   useRef,
   useState,
-  type KeyboardEvent,
-  type ReactNode,
 } from 'react'
 import { createPortal } from 'react-dom'
-import { widgetArrowDown } from '../assets/icons'
 import argumentAutoAwesome from '../assets/figma/argument-auto-awesome.svg'
-import appealAdd from '../assets/figma/appeal-add.svg'
 import appealClose from '../assets/figma/appeal-close.svg'
-import appealDelete from '../assets/figma/appeal-delete.svg'
 import appealEdit from '../assets/figma/appeal-edit.svg'
 import appealRestart from '../assets/figma/appeal-restart.svg'
 import { AppealDocumentationWidget, type AppealDocument } from './AppealGeneralInformation'
 import { AppealPdfBar, AppealPreviewTabs, type AppealPreviewTab } from './AppealPreviewChrome'
+import { AppealWidget } from './AppealWidget'
 import { AppealFieldFocusProvider, AppealWidgetForms } from './AppealWidgetForms'
 import { ClaimDetailsSplitContent } from './ClaimDetailsSplitContent'
 
@@ -82,78 +77,24 @@ function orderedParagraphs(paragraphs: CoverParagraph[]) {
   return [...tied, ...extraParagraphs(paragraphs)]
 }
 
-function OverlayDialog({
-  title,
-  titleId,
-  closeLabel,
-  onClose,
-  compact,
-  children,
-  footer,
-}: {
-  title: string
-  titleId: string
-  closeLabel: string
-  onClose: () => void
-  compact?: boolean
-  children: ReactNode
-  footer: ReactNode
-}) {
-  const closeButtonRef = useRef<HTMLButtonElement>(null)
-
-  useEffect(() => {
-    closeButtonRef.current?.focus()
-
-    function handleKeyDown(event: globalThis.KeyboardEvent) {
-      if (event.key === 'Escape') onClose()
-    }
-
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [onClose])
-
-  return createPortal(
-    <div className="appeal-prompt-dialog-layer">
-      <button
-        type="button"
-        className="appeal-prompt-dialog__backdrop"
-        aria-label={closeLabel}
-        onClick={onClose}
-      />
-      <section
-        className={
-          compact
-            ? 'appeal-prompt-dialog appeal-prompt-dialog--confirm'
-            : 'appeal-prompt-dialog'
-        }
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={titleId}
-      >
-        <header className="appeal-prompt-dialog__header">
-          <h2 id={titleId}>{title}</h2>
-          <button
-            ref={closeButtonRef}
-            type="button"
-            className="appeal-prompt-dialog__close"
-            aria-label={closeLabel}
-            title="Close"
-            onClick={onClose}
-          >
-            <img src={appealClose} alt="" width={20} height={20} />
-          </button>
-        </header>
-        <div className="appeal-prompt-dialog__body">{children}</div>
-        <footer className="appeal-prompt-dialog__footer appeal-prompt-dialog__footer--end">
-          {footer}
-        </footer>
-      </section>
-    </div>,
-    document.body,
-  )
+function documentTextFor(paragraphs: CoverParagraph[]) {
+  return [
+    'Dear Appeals / Medical Review Department,\nWe are appealing the denial of the services listed above and respectfully request reconsideration.',
+    ...orderedParagraphs(paragraphs).map((paragraph) => paragraph.body),
+    'We request that you reprocess and pay $300.13 within the appeal window ending 11/16/2026.\nEnclosures: BCBSAZ Provider Appeal Form, CMS-1500 (claim form), EOB / Remit 08/18/2026, Daily Note 07-09-2026.mdx, Auth Approval AUTH-88213.pdf, BCBSAZ Rate Sheet 2026.pdf',
+    'Sincerely,\nAppeals Team\nRidgeview Physical Therapy',
+  ].join('\n\n')
 }
 
-function ArgumentPrompt({ title, prompt }: { title: string; prompt: string }) {
+function ArgumentPrompt({
+  title,
+  prompt,
+  onRestart,
+}: {
+  title: string
+  prompt: string
+  onRestart?: () => void
+}) {
   const tooltipId = useId()
   const [showFull, setShowFull] = useState(false)
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -203,13 +144,23 @@ function ArgumentPrompt({ title, prompt }: { title: string; prompt: string }) {
           <img src={argumentAutoAwesome} alt="" width={20} height={20} />
         </span>
         <p>
-          <strong>{title} Prompt: </strong>
           {displayedPrompt}
         </p>
         <button type="button" className="appeal-cover__edit" onClick={openDialog}>
           <img src={appealEdit} alt="" width={14} height={14} />
           Edit
         </button>
+        {onRestart ? (
+          <button
+            type="button"
+            className="appeal-cover__icon-btn"
+            aria-label="Reset document text"
+            title="Reset"
+            onClick={onRestart}
+          >
+            <img src={appealRestart} alt="" width={20} height={20} />
+          </button>
+        ) : null}
       </div>
       {showFull ? (
         <div id={tooltipId} role="tooltip" className="appeal-cover__prompt-tip">
@@ -330,189 +281,33 @@ function ArgumentPrompt({ title, prompt }: { title: string; prompt: string }) {
 
 function ArgumentCard({
   paragraphs,
-  onAddParagraph,
-  onDeleteParagraph,
-  onHighlight,
 }: {
   paragraphs: CoverParagraph[]
-  onAddParagraph: () => void
-  onDeleteParagraph: (id: string) => void
-  onHighlight: (id: string | null) => void
 }) {
-  const [open, setOpen] = useState(true)
+  const initialDocumentText = documentTextFor(paragraphs)
+  const [documentText, setDocumentText] = useState(initialDocumentText)
 
   return (
-    <section
+    <AppealWidget
       id="appeal-section-argument"
-      className={open ? 'appeal-cover__card' : 'appeal-cover__card appeal-cover__card--collapsed'}
-      aria-labelledby="appeal-cover-arguments-title"
-      {...(!open
-        ? {
-            role: 'button',
-            tabIndex: 0,
-            'aria-expanded': false,
-            onClick: () => setOpen(true),
-            onKeyDown: (event: KeyboardEvent<HTMLElement>) => {
-              if (event.key === 'Enter' || event.key === ' ') {
-                event.preventDefault()
-                setOpen(true)
-              }
-            },
-          }
-        : {})}
+      title="Reasoning"
+      titleId="appeal-cover-reasoning-title"
+      bodyClassName="appeal-cover__reasoning"
     >
-      <header className="appeal-cover__card-header">
-        {open ? (
-          <button
-            type="button"
-            className="appeal-cover__card-toggle"
-            aria-expanded
-            aria-controls="appeal-cover-arguments"
-            onClick={() => setOpen(false)}
-          >
-            <span id="appeal-cover-arguments-title">Argument</span>
-            <img
-              src={widgetArrowDown}
-              alt=""
-              width={20}
-              height={20}
-              className="appeal-submission__chevron appeal-submission__chevron--up"
-            />
-          </button>
-        ) : (
-          <div className="appeal-cover__card-toggle">
-            <span id="appeal-cover-arguments-title">Argument</span>
-            <img
-              src={widgetArrowDown}
-              alt=""
-              width={20}
-              height={20}
-              className="appeal-submission__chevron"
-            />
-          </div>
-        )}
-      </header>
-      {open ? (
-        <div id="appeal-cover-arguments" className="appeal-cover__arguments">
-          {orderedParagraphs(paragraphs).map((paragraph, index) => {
-            const argument = ARGUMENTS.find((item) => item.title === paragraph.promptTitle)
-            return (
-              <Fragment key={paragraph.id}>
-                {index > 0 ? <div className="appeal-cover__divider" role="separator" /> : null}
-                <ContentParagraph
-                  {...paragraph}
-                  title={`Paragraph ${index + 1}`}
-                  promptTitle={argument?.title}
-                  promptText={argument?.prompt}
-                  onHighlight={onHighlight}
-                  onDelete={() => onDeleteParagraph(paragraph.id)}
-                />
-              </Fragment>
-            )
-          })}
-          <button
-            type="button"
-            className="btn btn--tertiary appeal-cover__add-paragraph"
-            onClick={onAddParagraph}
-          >
-            <img src={appealAdd} alt="" width={14} height={14} />
-            Add Paragraph
-          </button>
-        </div>
-      ) : null}
-    </section>
-  )
-}
-
-function ContentParagraph({
-  id,
-  title,
-  body,
-  promptTitle,
-  promptText,
-  onHighlight,
-  onDelete,
-}: {
-  id: string
-  title: string
-  body: string
-  promptTitle?: string
-  promptText?: string
-  onHighlight: (id: string | null) => void
-  onDelete: () => void
-}) {
-  const dialogTitleId = useId()
-  const [confirmOpen, setConfirmOpen] = useState(false)
-
-  function closeConfirm() {
-    setConfirmOpen(false)
-  }
-
-  return (
-    <section
-      className="appeal-cover__paragraph"
-      onMouseEnter={() => onHighlight(id)}
-      onMouseLeave={() => onHighlight(null)}
-      onFocus={() => onHighlight(id)}
-      onBlur={() => onHighlight(null)}
-    >
-      <div className="appeal-cover__paragraph-header">
-        <span className="appeal-cover__paragraph-title">{title}</span>
-        <div className="appeal-cover__paragraph-actions">
-          <button
-            type="button"
-            className="appeal-cover__icon-btn"
-            aria-label={`Delete ${title}`}
-            onClick={() => setConfirmOpen(true)}
-          >
-            <img src={appealDelete} alt="" width={20} height={20} />
-          </button>
-          <button
-            type="button"
-            className="appeal-cover__icon-btn"
-            aria-label={`Regenerate ${title}`}
-          >
-            <img src={appealRestart} alt="" width={20} height={20} />
-          </button>
-        </div>
-      </div>
-      {promptTitle && promptText ? (
-        <div className="appeal-cover__paragraph-prompt">
-          <ArgumentPrompt title={promptTitle} prompt={promptText} />
-        </div>
-      ) : null}
-      <textarea className="appeal-cover__textarea" defaultValue={body} aria-label={title} />
-      {confirmOpen ? (
-        <OverlayDialog
-          title="Delete paragraph"
-          titleId={dialogTitleId}
-          closeLabel="Cancel delete"
-          compact
-          onClose={closeConfirm}
-          footer={
-            <>
-              <button type="button" className="btn btn--tertiary" onClick={closeConfirm}>
-                Cancel
-              </button>
-              <button
-                type="button"
-                className="btn btn--primary"
-                onClick={() => {
-                  closeConfirm()
-                  onDelete()
-                }}
-              >
-                Delete
-              </button>
-            </>
-          }
-        >
-          <p className="appeal-prompt-dialog__message">
-            Delete <strong>{title}</strong> from the cover letter? This can&apos;t be undone.
-          </p>
-        </OverlayDialog>
-      ) : null}
-    </section>
+      <ArgumentPrompt
+        title={ARGUMENTS[0].title}
+        prompt={ARGUMENTS[0].prompt}
+        onRestart={() => setDocumentText(initialDocumentText)}
+      />
+      <label className="appeal-cover__document-field">
+        <span>Document Text</span>
+        <textarea
+          value={documentText}
+          aria-label="Document Text"
+          onChange={(event) => setDocumentText(event.target.value)}
+        />
+      </label>
+    </AppealWidget>
   )
 }
 
@@ -604,6 +399,11 @@ function CoverLetterPage({
   )
 }
 
+/** Cover letter page rendered with default content, for previews outside the Cover Letter step. */
+export function AppealCoverLetterPage() {
+  return <CoverLetterPage activePiece={null} activeField={null} paragraphs={DEFAULT_PARAGRAPHS} />
+}
+
 function CoverLetterDocumentPreview({
   document,
   onClose,
@@ -676,42 +476,18 @@ function CoverLetterDocumentPreview({
 
 /** Synthetic Figma prototype content — no real patient data. */
 export function AppealCoverLetter() {
-  const [activePiece, setActivePiece] = useState<string | null>(null)
   const [activeDocument, setActiveDocument] = useState<AppealDocument | null>(null)
   const [activeField, setActiveField] = useState<string | null>(null)
   const [activePreview, setActivePreview] = useState<AppealPreviewTab>('package')
-  const [paragraphs, setParagraphs] = useState<CoverParagraph[]>(DEFAULT_PARAGRAPHS)
-
-  function addParagraph() {
-    const next = ARGUMENTS.length + extraParagraphs(paragraphs).length + 1
-    setParagraphs((current) => [
-      ...current,
-      {
-        id: `extra-${Date.now()}`,
-        title: `Paragraph ${next}`,
-        body: '',
-        defaultOpen: true,
-      },
-    ])
-  }
-
-  function deleteParagraph(id: string) {
-    setParagraphs((current) => current.filter((paragraph) => paragraph.id !== id))
-    setActivePiece((current) => (current === id ? null : current))
-  }
+  const paragraphs = DEFAULT_PARAGRAPHS
 
   return (
     <div className="appeal-cover">
       <section className="appeal-cover__controls">
-        <ArgumentCard
-          paragraphs={paragraphs}
-          onAddParagraph={addParagraph}
-          onDeleteParagraph={deleteParagraph}
-          onHighlight={setActivePiece}
-        />
         <AppealFieldFocusProvider onActiveFieldChange={setActiveField}>
           <AppealWidgetForms />
         </AppealFieldFocusProvider>
+        <ArgumentCard paragraphs={paragraphs} />
       </section>
       <section className="appeal-cover__preview">
         <AppealPreviewTabs
@@ -734,7 +510,7 @@ export function AppealCoverLetter() {
         >
           {activePreview === 'package' ? (
             <CoverLetterPage
-              activePiece={activePiece}
+              activePiece={null}
               activeField={activeField}
               paragraphs={paragraphs}
             />

@@ -55,9 +55,24 @@ export function AppealPreviewTabs<T extends string>({
   )
 }
 
-export function AppealPdfBar({ pageCount = 2 }: { pageCount?: number }) {
-  const [page, setPage] = useState(1)
+export function AppealPdfBar({
+  pageCount = 2,
+  page: controlledPage,
+  onPageChange,
+}: {
+  pageCount?: number
+  page?: number
+  onPageChange?: (page: number) => void
+}) {
+  const [uncontrolledPage, setUncontrolledPage] = useState(1)
   const [zoom, setZoom] = useState(100)
+
+  const page = controlledPage ?? uncontrolledPage
+
+  function setPage(next: number) {
+    if (controlledPage == null) setUncontrolledPage(next)
+    onPageChange?.(next)
+  }
 
   function stepZoom(delta: number) {
     const index = ZOOM_LEVELS.indexOf(zoom)
@@ -73,7 +88,7 @@ export function AppealPdfBar({ pageCount = 2 }: { pageCount?: number }) {
           className="icon-btn icon-btn--outlined"
           aria-label="Previous page"
           disabled={page <= 1}
-          onClick={() => setPage((current) => Math.max(1, current - 1))}
+          onClick={() => setPage(Math.max(1, page - 1))}
         >
           <img src={pdfArrowDown} alt="" width={20} height={20} className="appeal-pdf-bar__page-prev" />
         </button>
@@ -85,7 +100,7 @@ export function AppealPdfBar({ pageCount = 2 }: { pageCount?: number }) {
           className="icon-btn icon-btn--outlined"
           aria-label="Next page"
           disabled={page >= pageCount}
-          onClick={() => setPage((current) => Math.min(pageCount, current + 1))}
+          onClick={() => setPage(Math.min(pageCount, page + 1))}
         >
           <img src={pdfArrowDown} alt="" width={20} height={20} />
         </button>

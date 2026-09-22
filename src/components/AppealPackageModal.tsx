@@ -15,7 +15,11 @@ import appealPayerForm from '../assets/figma/appeal-payer-form.svg'
 import appealSend from '../assets/figma/appeal-send.svg'
 import { leftPanelClose } from '../assets/icons'
 import { AppealAiAssistant } from './AppealAiAssistant'
-import { APPEAL_DOWNLOAD_ACTION_LABEL, AppealConfirmSubmit } from './AppealConfirmSubmit'
+import {
+  APPEAL_DELIVERY_ACTION_LABEL,
+  AppealConfirmSubmitRedesign,
+  type AppealDeliveryMethod,
+} from './AppealConfirmSubmitRedesign'
 import { AppealCoverLetter } from './AppealCoverLetter'
 import { AppealGeneralInformation } from './AppealGeneralInformation'
 import { AppealPayerForm } from './AppealPayerForm'
@@ -47,6 +51,7 @@ export function AppealPackageModal({ onClose }: { onClose: () => void }) {
   const [activeStep, setActiveStep] = useState(0)
   const [controlsCollapsed, setControlsCollapsed] = useState(false)
   const [aiOpen, setAiOpen] = useState(false)
+  const [deliveryMethod, setDeliveryMethod] = useState<AppealDeliveryMethod>('download')
 
   function toggleAiPanel() {
     if (!aiOpen) setControlsCollapsed(true)
@@ -215,7 +220,7 @@ export function AppealPackageModal({ onClose }: { onClose: () => void }) {
                     <img src={appealArrowBack} alt="" width={20} height={20} />
                   </button>
                 ) : null}
-                <h3>{APPEAL_STEPS[activeStep].label}</h3>
+                <h3>{activeStep === 3 ? APPEAL_STEPS[2].label : APPEAL_STEPS[activeStep].label}</h3>
                 {activeStep < APPEAL_STEPS.length - 1 ? (
                   <button
                     type="button"
@@ -237,7 +242,7 @@ export function AppealPackageModal({ onClose }: { onClose: () => void }) {
                     className="btn btn--primary appeal-package__continue"
                     onClick={onClose}
                   >
-                    {APPEAL_DOWNLOAD_ACTION_LABEL}
+                    {APPEAL_DELIVERY_ACTION_LABEL[deliveryMethod]}
                   </button>
                 )}
               </header>
@@ -259,7 +264,10 @@ export function AppealPackageModal({ onClose }: { onClose: () => void }) {
                 ) : activeStep === 2 ? (
                   <AppealPayerForm />
                 ) : (
-                  <AppealConfirmSubmit />
+                  <AppealConfirmSubmitRedesign
+                    method={deliveryMethod}
+                    onMethodChange={setDeliveryMethod}
+                  />
                 )}
               </div>
             </section>

@@ -1,9 +1,8 @@
 import { createContext, useContext, useId, useState, type ReactNode } from 'react'
-import { widgetArrowDown } from '../assets/icons'
 import appealFieldCalendar from '../assets/figma/appeal-field-calendar.svg'
 import appealFieldClose from '../assets/figma/appeal-field-close.svg'
 import appealFieldDropdown from '../assets/figma/appeal-field-dropdown.svg'
-import appealFieldPhone from '../assets/figma/appeal-field-phone.svg'
+import { AppealWidget } from './AppealWidget'
 
 const ActiveFieldContext = createContext<(fieldId: string | null) => void>(() => {})
 
@@ -154,43 +153,26 @@ function AppealFormCard({
   id,
   title,
   children,
+  defaultOpen = true,
 }: {
   id: string
   title: string
   children: ReactNode
+  defaultOpen?: boolean
 }) {
-  const [open, setOpen] = useState(false)
   const titleId = useId()
-  const bodyId = useId()
 
   return (
-    <section
+    <AppealWidget
       id={id}
-      className={open ? 'appeal-form-widget' : 'appeal-form-widget appeal-form-widget--collapsed'}
-      aria-labelledby={titleId}
+      title={title}
+      titleId={titleId}
+      defaultOpen={defaultOpen}
     >
-      <button
-        type="button"
-        className="appeal-form-widget__toggle"
-        aria-expanded={open}
-        aria-controls={bodyId}
-        onClick={() => setOpen((value) => !value)}
-      >
-        <h3 id={titleId}>{title}</h3>
-        <img
-          src={widgetArrowDown}
-          alt=""
-          width={20}
-          height={20}
-          className={open ? 'appeal-form-widget__chevron appeal-form-widget__chevron--open' : 'appeal-form-widget__chevron'}
-        />
-      </button>
-      {open ? (
-        <form id={bodyId} className="appeal-form-widget__grid" onSubmit={(event) => event.preventDefault()}>
-          {children}
-        </form>
-      ) : null}
-    </section>
+      <form className="appeal-form-widget__grid" onSubmit={(event) => event.preventDefault()}>
+        {children}
+      </form>
+    </AppealWidget>
   )
 }
 
@@ -198,7 +180,11 @@ function AppealFormCard({
 export function AppealWidgetForms() {
   return (
     <>
-      <AppealFormCard id="appeal-section-claim-denial" title="Claim and Denial Values">
+      <AppealFormCard
+        id="appeal-section-claim-denial"
+        title="Claim and Denial Values"
+        defaultOpen={false}
+      >
         <AppealFormField label="Patient" value="Jz Testform Test" fieldId="patient" />
         <AppealFormField
           label="DOB"
@@ -263,57 +249,6 @@ export function AppealWidgetForms() {
           value="09/08/2026"
           icon={appealFieldCalendar}
           fieldId="date"
-        />
-      </AppealFormCard>
-
-      <AppealFormCard id="appeal-section-from" title="From · site defaults">
-        <AppealFormField
-          label="Practice"
-          value="Athelas WPT Physical Therapy"
-          fieldId="practice"
-        />
-        <AppealFormField label="Provider" value="Dr. Kevin Murar, DPT" fieldId="provider" />
-        <AppealFormField label="NPI" value="1841234567" alignEnd fieldId="npi" />
-        <AppealFormField label="TIN" value="84-2210987" alignEnd fieldId="tin" />
-        <AppealFormField
-          label="Address"
-          value="1200 Market St, Suite 400, San Francisco, CA 94102"
-          fieldId="address"
-        />
-        <AppealFormField
-          label="Phone"
-          value="(415) 555-0142"
-          icon={appealFieldPhone}
-          fieldId="phone"
-        />
-        <AppealFormField
-          label="Phone"
-          value="(415) 555-0143"
-          icon={appealFieldPhone}
-          fieldId="phone-alt"
-        />
-        <AppealFormField
-          label="Signer"
-          value="Maria Lopez, Billing Manager"
-          fieldId="signer"
-        />
-      </AppealFormCard>
-
-      <AppealFormCard id="appeal-section-request" title="Request">
-        <AppealFormField
-          label="Requested Action"
-          value="reprocess and pay $300.13"
-          fieldId="requested-action"
-        />
-        <AppealFormField
-          label="Filing window"
-          value="within the appeal window ending 11/16/2026"
-          fieldId="filing-window"
-        />
-        <AppealFormField
-          label="Tracking ref"
-          value="APL-22169011-1"
-          fieldId="tracking-ref"
         />
       </AppealFormCard>
     </>

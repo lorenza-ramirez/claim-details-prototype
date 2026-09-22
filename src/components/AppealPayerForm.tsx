@@ -54,7 +54,7 @@ const PREVIEW_GROUPS = [
   MAPPED_FIELDS.slice(19, 20),
 ]
 
-function FormPreview({ activeField }: { activeField: string | null }) {
+export function FormPreview({ activeField = null }: { activeField?: string | null }) {
   return (
     <div className="payer-form__paper">
       <div className="payer-form__brand">bcbs</div>
@@ -178,9 +178,6 @@ function ChangePayerFormDialog({ onClose }: { onClose: () => void }) {
               drop files here or <button type="button">Browse Files</button>
             </p>
           </div>
-          <p className="payer-form__change-hint">
-            Upload your new form and our team will map it and notify you
-          </p>
           <p className="payer-form__change-reason-label">Reason</p>
           <div className="payer-form__change-options" role="radiogroup" aria-label="Reason">
             {CHANGE_FORM_REASONS.map((option) => {

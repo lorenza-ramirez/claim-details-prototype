@@ -4,7 +4,8 @@ import appealChipInfo from '../assets/figma/appeal-info.svg'
 import appealDenied from '../assets/figma/appeal-denied.svg'
 import appealRadioSelected from '../assets/figma/appeal-radio-selected.svg'
 import appealRadioUnselected from '../assets/figma/appeal-radio-unselected.svg'
-import { search, submissionsSortDown, tune, widgetArrowDown } from '../assets/icons'
+import { search, submissionsSortDown, tune } from '../assets/icons'
+import { AppealWidget } from './AppealWidget'
 
 /** Synthetic demo values from Figma — not real PHI/PII. */
 const APPEAL_SUBMISSION = {
@@ -64,7 +65,7 @@ const PROCEDURES: ProcedureRow[] = [
   },
 ]
 
-type DocCategory = 'all' | 'patient' | 'chartNote' | 'medicalFile' | 'fax'
+type DocCategory = 'all' | 'patient' | 'chartNote' | 'medicalFile' | 'fax' | 'other'
 type FileKind = 'pdf' | 'image' | 'doc'
 
 type DocumentationRow = {
@@ -129,6 +130,36 @@ const DOCUMENT_ROWS: DocumentationRow[] = [
     uploadedBy: 'Front Desk',
     size: '96 KB',
   },
+  {
+    id: 'doc-6',
+    name: 'Therapy Evaluation_01-10.pdf',
+    kind: 'pdf',
+    category: 'chartNote',
+    categoryLabel: 'Chart Note',
+    uploaded: '01/10/2026',
+    uploadedBy: 'M. Chen',
+    size: '184 KB',
+  },
+  {
+    id: 'doc-7',
+    name: 'Payer Correspondence.pdf',
+    kind: 'pdf',
+    category: 'other',
+    categoryLabel: 'Other',
+    uploaded: '01/14/2026',
+    uploadedBy: 'J. Alvarez',
+    size: '76 KB',
+  },
+  {
+    id: 'doc-8',
+    name: 'Prior Auth Follow-up.pdf',
+    kind: 'pdf',
+    category: 'medicalFile',
+    categoryLabel: 'Medical File',
+    uploaded: '02/20/2026',
+    uploadedBy: 'Remit Bot',
+    size: '109 KB',
+  },
 ]
 
 const DOC_FILTERS: { id: DocCategory; label: string }[] = [
@@ -137,6 +168,7 @@ const DOC_FILTERS: { id: DocCategory; label: string }[] = [
   { id: 'chartNote', label: 'Chart Note' },
   { id: 'medicalFile', label: 'Medical File' },
   { id: 'fax', label: 'Fax' },
+  { id: 'other', label: 'Other' },
 ]
 
 const INITIAL_SELECTED = ['doc-1', 'doc-4', 'doc-5']
@@ -170,106 +202,6 @@ function AppealField({
   )
 }
 
-function CollapsibleCard({
-  title,
-  titleId,
-  children,
-  defaultOpen = true,
-  id,
-  badge,
-}: {
-  title: string
-  titleId: string
-  children: ReactNode
-  defaultOpen?: boolean
-  id?: string
-  badge?: ReactNode
-}) {
-  const [open, setOpen] = useState(defaultOpen)
-  const bodyId = `${titleId}-body`
-
-  function toggle() {
-    setOpen((value) => !value)
-  }
-
-  const badgeEl = badge ? <span className="appeal-docs__count">{badge}</span> : null
-
-  const titleContent = (
-    <>
-      <h3 id={titleId}>{title}</h3>
-      <img
-        src={widgetArrowDown}
-        alt=""
-        width={20}
-        height={20}
-        className={
-          open
-            ? 'appeal-submission__chevron appeal-submission__chevron--up'
-            : 'appeal-submission__chevron'
-        }
-      />
-    </>
-  )
-
-  return (
-    <section
-      id={id}
-      className={open ? 'appeal-submission' : 'appeal-submission appeal-submission--collapsed'}
-      aria-labelledby={titleId}
-      {...(!open
-        ? {
-            role: 'button',
-            tabIndex: 0,
-            'aria-expanded': false,
-            'aria-controls': bodyId,
-            onClick: () => setOpen(true),
-            onKeyDown: (event: KeyboardEvent<HTMLElement>) => {
-              if (event.key === 'Enter' || event.key === ' ') {
-                event.preventDefault()
-                setOpen(true)
-              }
-            },
-          }
-        : {})}
-    >
-      <header
-        className={
-          badge
-            ? 'appeal-submission__title-row appeal-submission__title-row--with-badge'
-            : 'appeal-submission__title-row'
-        }
-      >
-        {open ? (
-          <button
-            type="button"
-            className={
-              badge
-                ? 'appeal-submission__title-btn appeal-submission__title-btn--with-badge'
-                : 'appeal-submission__title-btn'
-            }
-            aria-expanded
-            aria-controls={bodyId}
-            onClick={toggle}
-          >
-            {titleContent}
-            {badgeEl}
-          </button>
-        ) : (
-          <>
-            <div className="appeal-submission__title-btn">{titleContent}</div>
-            {badgeEl}
-          </>
-        )}
-      </header>
-      {open ? (
-        <div id={bodyId} className="appeal-submission__body">
-          {children}
-        </div>
-      ) : null}
-    </section>
-  )
-}
-
 function AppealRadio({
   name,
   value,
@@ -297,14 +229,45 @@ function AppealRadio({
   )
 }
 
-function AppealSubmissionWidget() {
+function AppealTypeWidget() {
   const [packetType, setPacketType] = useState<'full' | 'documents'>('full')
 
   return (
-    <CollapsibleCard
+    <AppealWidget
+      id="appeal-section-type"
+      title="Type of Appeal"
+      titleId="appeal-type-title"
+      bodyClassName="appeal-widget__body--indented"
+    >
+      <div className="appeal-submission__radios" role="radiogroup" aria-label="Package type">
+        <AppealRadio
+          name="appeal-packet-type"
+          value="full"
+          checked={packetType === 'full'}
+          onChange={() => setPacketType('full')}
+        >
+          Full appeal packet (Letter, form, documents)
+        </AppealRadio>
+        <AppealRadio
+          name="appeal-packet-type"
+          value="documents"
+          checked={packetType === 'documents'}
+          onChange={() => setPacketType('documents')}
+        >
+          Documents only (No letter, no form)
+        </AppealRadio>
+      </div>
+    </AppealWidget>
+  )
+}
+
+function AppealSubmissionWidget() {
+  return (
+    <AppealWidget
       id="appeal-section-submission"
       title="Submission you are appealing"
       titleId="appeal-submission-title"
+      bodyClassName="appeal-widget__body--indented"
     >
       <div className="claim-details-widget__grid">
         <div className="claim-details-widget__col claim-details-widget__col--gap">
@@ -324,28 +287,7 @@ function AppealSubmissionWidget() {
           <AppealField label="Appeal Destination" value={APPEAL_SUBMISSION.appealDestination} />
         </div>
       </div>
-
-      <div className="appeal-submission__divider" role="separator" />
-
-      <div className="appeal-submission__radios" role="radiogroup" aria-label="Package type">
-        <AppealRadio
-          name="appeal-packet-type"
-          value="full"
-          checked={packetType === 'full'}
-          onChange={() => setPacketType('full')}
-        >
-          Full appeal packet (Letter, form, documents)
-        </AppealRadio>
-        <AppealRadio
-          name="appeal-packet-type"
-          value="documents"
-          checked={packetType === 'documents'}
-          onChange={() => setPacketType('documents')}
-        >
-          Documents only (No letter, no form)
-        </AppealRadio>
-      </div>
-    </CollapsibleCard>
+    </AppealWidget>
   )
 }
 
@@ -385,11 +327,11 @@ function AppealProceduresWidget() {
   }
 
   return (
-    <CollapsibleCard
+    <AppealWidget
       id="appeal-section-procedures"
       title="Procedures on this submission"
       titleId="appeal-procedures-title"
-      badge="Run All (Recommended)"
+      summary="Consolidate(recommended)"
     >
       <div className="appeal-procedure__table-wrap">
         <table className="appeal-procedure__table">
@@ -460,7 +402,7 @@ function AppealProceduresWidget() {
           </tbody>
         </table>
       </div>
-    </CollapsibleCard>
+    </AppealWidget>
   )
 }
 
@@ -493,12 +435,10 @@ export function AppealDocumentationWidget({
   activeDocumentId?: string | null
   onOpenDocument?: (document: AppealDocument) => void
 }) {
-  const [open, setOpen] = useState(defaultOpen)
   const [filter, setFilter] = useState<DocCategory>('all')
   const [selected, setSelected] = useState<string[]>(INITIAL_SELECTED)
   const attached = variant === 'attached'
   const titleId = `${sectionId}-title`
-  const bodyId = `${sectionId}-body`
 
   const sourceRows = useMemo(
     () =>
@@ -529,73 +469,8 @@ export function AppealDocumentationWidget({
     )
   }
 
-  return (
-    <section
-      id={sectionId}
-      className={[
-        'appeal-docs',
-        open ? '' : 'appeal-docs--collapsed',
-        attached ? 'appeal-docs--attached' : '',
-      ]
-        .filter(Boolean)
-        .join(' ')}
-      {...(hideHeader ? { 'aria-label': 'Documentation' } : { 'aria-labelledby': titleId })}
-      {...(!hideHeader && !open
-        ? {
-            role: 'button',
-            tabIndex: 0,
-            'aria-expanded': false,
-            'aria-controls': bodyId,
-            onClick: () => setOpen(true),
-            onKeyDown: (event: KeyboardEvent<HTMLElement>) => {
-              if (event.key === 'Enter' || event.key === ' ') {
-                event.preventDefault()
-                setOpen(true)
-              }
-            },
-          }
-        : {})}
-    >
-      {hideHeader ? null : <header className="appeal-docs__title-row">
-        {open ? (
-          <button
-            type="button"
-            className="appeal-docs__toggle"
-            aria-expanded
-            aria-controls={bodyId}
-            onClick={() => setOpen(false)}
-          >
-            <span className="appeal-submission__title-btn">
-              <h3 id={titleId}>Documentation</h3>
-              <img
-                src={widgetArrowDown}
-                alt=""
-                width={20}
-                height={20}
-                className="appeal-submission__chevron appeal-submission__chevron--up"
-              />
-            </span>
-            <span className="appeal-docs__count">{selected.length} selected</span>
-          </button>
-        ) : (
-          <>
-            <div className="appeal-submission__title-btn">
-              <h3 id={titleId}>Documentation</h3>
-              <img
-                src={widgetArrowDown}
-                alt=""
-                width={20}
-                height={20}
-                className="appeal-submission__chevron"
-              />
-            </div>
-            <span className="appeal-docs__count">{selected.length} selected</span>
-          </>
-        )}
-      </header>}
-
-      {hideHeader || open ? (
-      <div id={bodyId} className="appeal-docs__body">
+  const content = (
+    <>
         {attached ? null : (
           <div className="appeal-docs__upload">
             <span className="appeal-docs__upload-icon">
@@ -725,15 +600,39 @@ export function AppealDocumentationWidget({
             </tbody>
           </table>
         </div>
-      </div>
-      ) : null}
-    </section>
+    </>
+  )
+
+  if (hideHeader) {
+    return (
+      <section
+        id={sectionId}
+        className={attached ? 'appeal-docs appeal-docs--attached' : 'appeal-docs'}
+        aria-label="Documentation"
+      >
+        <div className="appeal-docs__body">{content}</div>
+      </section>
+    )
+  }
+
+  return (
+    <AppealWidget
+      id={sectionId}
+      title="Documentation"
+      titleId={titleId}
+      summary={`${DOCUMENT_ROWS.length} Docs`}
+      defaultOpen={defaultOpen}
+      bodyClassName="appeal-docs__body"
+    >
+      {content}
+    </AppealWidget>
   )
 }
 
 export function AppealGeneralInformation() {
   return (
     <div className="appeal-general">
+      <AppealTypeWidget />
       <AppealSubmissionWidget />
       <AppealProceduresWidget />
       <AppealDocumentationWidget />
