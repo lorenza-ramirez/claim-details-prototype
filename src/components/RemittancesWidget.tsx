@@ -1,76 +1,23 @@
 import {
+  activityMinus,
   submissionsPaid,
   submissionsSortDown,
 } from '../assets/icons'
 import { ClaimWidgetTitle, useClaimWidgetOpen } from './ClaimWidgetCollapse'
-import { useWidgetView, WidgetViewButtons } from './widgetView'
-
-type RemittanceRow = {
-  checkNumber: string
-  checkDate: string
-  insPaid: string
-  prAmount: string
-  otherPr: string
-  status: string
-  depositVerified: string
-  sentTo: string
-  memberId: string
-  source: string
-  importedDate: string
-}
-
-/** Synthetic demo remittances — not real PHI/PII. */
-const ROWS: RemittanceRow[] = [
-  {
-    checkNumber: 'ARC680055',
-    checkDate: '07/21/2026',
-    insPaid: '$234.34',
-    prAmount: '$234.34',
-    otherPr: '$234.34',
-    status: 'Posted',
-    depositVerified: 'Verified',
-    sentTo: 'NF-GEICO',
-    memberId: 'BQ60358Y',
-    source: 'EOB',
-    importedDate: '07/21/2026',
-  },
-  {
-    checkNumber: 'ARC680102',
-    checkDate: '06/14/2026',
-    insPaid: '$189.00',
-    prAmount: '$45.00',
-    otherPr: '$0.00',
-    status: 'Posted',
-    depositVerified: 'Verified',
-    sentTo: 'NF-GEICO',
-    memberId: 'BQ60358Y',
-    source: '835',
-    importedDate: '06/15/2026',
-  },
-  {
-    checkNumber: 'ARC679944',
-    checkDate: '05/02/2026',
-    insPaid: '$110.50',
-    prAmount: '$20.00',
-    otherPr: '$12.00',
-    status: 'Posted',
-    depositVerified: 'Pending',
-    sentTo: 'NF-GEICO',
-    memberId: 'BQ60358Y',
-    source: 'EOB',
-    importedDate: '05/03/2026',
-  },
-]
+import {
+  REMITTANCE_RECORDS,
+  REMITTANCE_ROWS as ROWS,
+  remittanceRecordLabel as recordLabel,
+} from './remittancesData'
+import { recordIsOpen, useWidgetView, WidgetViewButtons } from './widgetView'
 
 export function RemittancesWidget({ hideHeader = false }: { hideHeader?: boolean }) {
-  const { openSide } = useWidgetView()
+  const { view, openSide } = useWidgetView()
   const { open, contentId, toggle, collapsible } = useClaimWidgetOpen()
   const isOpen = !collapsible || open
   const showBody = hideHeader || isOpen
-  const records = ROWS.map((row) => row.checkNumber)
-
-  function openRecord(checkNumber: string) {
-    openSide('remittances', 'Remittances', checkNumber, records)
+  function openRecord(label: string) {
+    openSide('remittances', 'Remittances', label, REMITTANCE_RECORDS)
   }
 
   return (
@@ -165,20 +112,29 @@ export function RemittancesWidget({ hideHeader = false }: { hideHeader?: boolean
           <tbody>
             {ROWS.map((row) => (
               <tr
-                key={`${row.checkNumber}-${row.checkDate}`}
-                className="widget-table-row"
+                key={recordLabel(row)}
+                className={
+                  recordIsOpen(view, 'remittances', recordLabel(row))
+                    ? 'widget-table-row widget-table-row--open'
+                    : 'widget-table-row'
+                }
                 tabIndex={0}
                 role="button"
-                aria-label={`Open remittance ${row.checkNumber}`}
-                onClick={() => openRecord(row.checkNumber)}
+                aria-current={
+                  recordIsOpen(view, 'remittances', recordLabel(row)) ? 'true' : undefined
+                }
+                aria-label={`Open remittance ${recordLabel(row)}`}
+                onClick={() => openRecord(recordLabel(row))}
                 onKeyDown={(event) => {
                   if (event.key === 'Enter' || event.key === ' ') {
                     event.preventDefault()
-                    openRecord(row.checkNumber)
+                    openRecord(recordLabel(row))
                   }
                 }}
               >
-                <td className="remittances-widget__td">{row.checkNumber}</td>
+                <td className="remittances-widget__td remittances-widget__td--truncate">
+                  <span title={row.checkNumber}>{row.checkNumber}</span>
+                </td>
                 <td className="remittances-widget__td remittances-widget__td--end">{row.checkDate}</td>
                 <td className="remittances-widget__td remittances-widget__td--end">{row.insPaid}</td>
                 <td className="remittances-widget__td remittances-widget__td--end">{row.prAmount}</td>
@@ -191,12 +147,17 @@ export function RemittancesWidget({ hideHeader = false }: { hideHeader?: boolean
                 </td>
                 <td className="remittances-widget__td">
                   <span className="remittances-widget__badge">
-                    <img src={submissionsPaid} alt="" width={16} height={16} />
+                    <img
+                      src={row.depositVerified === 'N/A' ? activityMinus : submissionsPaid}
+                      alt=""
+                      width={16}
+                      height={16}
+                    />
                     {row.depositVerified}
                   </span>
                 </td>
                 <td className="remittances-widget__td remittances-widget__td--truncate">
-                  <span>{row.sentTo}</span>
+                  <span title={row.sentTo}>{row.sentTo}</span>
                 </td>
                 <td className="remittances-widget__td remittances-widget__td--end">{row.memberId}</td>
                 <td className="remittances-widget__td">

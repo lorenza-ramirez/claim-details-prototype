@@ -1,16 +1,12 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type FocusEvent, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import {
   aiGroup1,
   aiGroup2,
-  assuredWorkload,
-  attachFile,
   avatar,
-  checkCircle,
   circle,
   copy,
-  docs,
   dockToRight,
-  dynamicFeed,
   home,
   keyboardArrowDown,
   keyboardArrowDown1,
@@ -20,72 +16,56 @@ import {
   leftPanelClose,
   link,
   logo,
-  menu,
-  monetizationOn,
   moreHoriz,
   paymentsSchedule,
   propsCalendar,
+  propsBlock,
   propsCancelSend,
   propsHealth,
   propsPerson,
   propsPersonAdd,
   propsSell,
+  propsStageProgress,
+  propsSyncDisabled,
+  propsTagAdd,
   propsUpdate,
   receiptLong,
   removeSelection,
   search,
   send,
-  sendPanel,
   settings,
-  sparkleA,
-  sparkleB,
   speaking,
+  submissionsPaid,
+  summaryPanel,
   supervisorAccount,
-  tune,
-  unfoldLess,
-  unfoldMore,
 } from '../assets/icons'
 import { ActivityWidget } from './ActivityWidget'
 import { ClaimDetailsWidget } from './ClaimDetailsWidget'
+import { PatientHoverCard } from './ClaimDetailsSplitContent'
 import { ClaimSummary } from './ClaimSummary'
-import { ClaimV2Panel } from './ClaimV2Panel'
 import {
-  ClaimWidgetsCollapseProvider,
-  useClaimWidgetsCollapseActions,
-} from './ClaimWidgetCollapse'
+  ClaimV2Aside,
+  ClaimV2Panel,
+  SUMMARY_DEFAULT_WIDTH,
+} from './ClaimV2Panel'
+import {
+  claimTypeForStatus,
+  loadLayoutPreferences,
+  useClaimLayouts,
+  type ClaimLayouts,
+  type LayoutPreferences,
+} from './claimLayouts'
+import { useClaimSplitView } from './claimSplitView'
+import { LayoutMenu } from './LayoutMenu'
+import { Toast } from './Toast'
+import { CLAIM_QUEUE } from '../data/claims'
+import { ClaimWidgetsCollapseProvider } from './ClaimWidgetCollapse'
 import { DocumentationWidget } from './DocumentationWidget'
 import { PaymentsWidget } from './PaymentsWidget'
 import { RemittancesWidget } from './RemittancesWidget'
 import { ReviewWidget } from './ReviewWidget'
 import { SubmissionsWidget } from './SubmissionsWidget'
 import { useWidgetView, WidgetViewPanel, WidgetViewProvider } from './widgetView'
-
-type ContextNavId =
-  | 'summary'
-  | 'review'
-  | 'details'
-  | 'submissions'
-  | 'documentation'
-  | 'remittances'
-  | 'payments'
-  | 'activity'
-
-const CONTEXT_NAV: {
-  id: ContextNavId
-  label: string
-  icon?: string
-  badge?: number
-  sparkle?: boolean
-}[] = [
-  { id: 'summary', label: 'Claim Summary', sparkle: true },
-  { id: 'review', label: 'Review', icon: checkCircle },
-  { id: 'details', label: 'Claim Details', icon: docs },
-  { id: 'submissions', label: 'Submissions', icon: sendPanel },
-  { id: 'documentation', label: 'Documentation', icon: attachFile },
-  { id: 'remittances', label: 'Remittances', icon: monetizationOn },
-  { id: 'payments', label: 'Payments', icon: assuredWorkload },
-  { id: 'activity', label: 'Activity', icon: dynamicFeed, badge: 1 },
-]
 
 function Icon({
   src,
@@ -337,7 +317,10 @@ function GlobalHeader({
   )
 }
 
-type ClaimVersion = 'current' | 'v1' | 'v2'
+type ClaimVersion = 'option1' | 'option2'
+
+/** Option 1 is hidden for now; flip to bring the version toggle back. */
+const SHOW_VERSION_TOGGLE = false
 
 function VersionToggle({
   value,
@@ -350,9 +333,8 @@ function VersionToggle({
     <div className="version-toggle" role="group" aria-label="Claim version">
       {(
         [
-          ['current', 'Current'],
-          ['v1', 'V1'],
-          ['v2', 'V2'],
+          ['option1', 'Option 1'],
+          ['option2', 'Option 2'],
         ] as const
       ).map(([id, label]) => (
         <button
@@ -378,11 +360,27 @@ function ClaimPageHeader({
   onVersionChange,
   fullViewTitle,
   onExitFullView,
+  summaryOpen,
+  onToggleSummary,
+  claimId,
+  claimPosition,
+  claimCount,
+  onNextClaim,
+  onPreviousClaim,
+  layoutMenu,
 }: {
   version: ClaimVersion
   onVersionChange: (value: ClaimVersion) => void
   fullViewTitle?: string | null
   onExitFullView?: () => void
+  summaryOpen?: boolean
+  onToggleSummary?: () => void
+  claimId: string
+  claimPosition: number
+  claimCount: number
+  onNextClaim: () => void
+  onPreviousClaim: () => void
+  layoutMenu?: ReactNode
 }) {
   return (
     <div className="claim-header">
@@ -394,7 +392,7 @@ function ClaimPageHeader({
               className="claim-header__crumb-link"
               onClick={onExitFullView}
             >
-              22316691
+              {claimId}
             </button>
             <span className="claim-header__crumb-sep" aria-hidden>
               /
@@ -402,7 +400,7 @@ function ClaimPageHeader({
             <span className="claim-header__crumb-current">{fullViewTitle}</span>
           </nav>
         ) : (
-          <h1 className="claim-header__title">22316691</h1>
+          <h1 className="claim-header__title">{claimId}</h1>
         )}
         <button type="button" className="icon-btn" aria-label="Copy link">
           <Icon src={link} size={20} />
@@ -415,24 +413,62 @@ function ClaimPageHeader({
         </button>
       </div>
 
-      <VersionToggle value={version} onChange={onVersionChange} />
+      {SHOW_VERSION_TOGGLE ? <VersionToggle value={version} onChange={onVersionChange} /> : null}
 
       <div className="claim-header__right">
+        {layoutMenu}
         <div className="page-controls">
-          <button type="button" className="icon-btn" aria-label="Next claim">
+          <button
+            type="button"
+            className="icon-btn"
+            aria-label="Next claim"
+            aria-keyshortcuts="J"
+            title="Next claim (J)"
+            disabled={claimPosition >= claimCount}
+            onClick={onNextClaim}
+          >
             <Icon src={keyboardArrowDown2} size={18} />
           </button>
-          <button type="button" className="icon-btn" aria-label="Previous claim">
+          <button
+            type="button"
+            className="icon-btn"
+            aria-label="Previous claim"
+            aria-keyshortcuts="K"
+            title="Previous claim (K)"
+            disabled={claimPosition <= 1}
+            onClick={onPreviousClaim}
+          >
             <Icon src={keyboardArrowUp} size={18} />
           </button>
-          <div className="page-index" aria-label="Claim 1 of 30">
-            <span className="page-index__current">1</span>
+          <div
+            className="page-index"
+            role="status"
+            aria-label={`Claim ${claimPosition} of ${claimCount}`}
+          >
+            <span className="page-index__current">{claimPosition}</span>
             <span className="page-index__sep">/</span>
-            <span className="page-index__total">30</span>
+            <span className="page-index__total">{claimCount}</span>
           </div>
         </div>
 
         <div className="claim-header__divider" aria-hidden />
+
+        {onToggleSummary ? (
+          <button
+            type="button"
+            className={
+              summaryOpen
+                ? 'icon-btn icon-btn--outlined claim-header__summary claim-header__summary--open'
+                : 'icon-btn icon-btn--outlined claim-header__summary'
+            }
+            aria-pressed={summaryOpen}
+            aria-label={summaryOpen ? 'Close summary' : 'Open summary'}
+            title={summaryOpen ? 'Close summary' : 'Open summary'}
+            onClick={onToggleSummary}
+          >
+            <Icon src={summaryPanel} size={18} />
+          </button>
+        ) : null}
 
         <button type="button" className="btn btn--secondary">
           Actions
@@ -447,342 +483,140 @@ function ClaimPageHeader({
   )
 }
 
-function SparkleIcon() {
+function ClaimOption1Panel() {
   return (
-    <span className="sparkle-icon" aria-hidden>
-      <img src={sparkleA} alt="" width={14} height={20} className="sparkle-icon__a" />
-      <img src={sparkleB} alt="" width={20} height={11} className="sparkle-icon__b" />
-    </span>
-  )
-}
-
-const SECTION_IDS: ContextNavId[] = [
-  'summary',
-  'review',
-  'details',
-  'submissions',
-  'documentation',
-  'remittances',
-  'payments',
-  'activity',
-]
-
-function sectionDomId(id: ContextNavId) {
-  return `claim-section-${id}`
-}
-
-function widgetIdToNavId(widgetId: string | undefined): ContextNavId | null {
-  if (!widgetId) return null
-  if (SECTION_IDS.includes(widgetId as ContextNavId)) return widgetId as ContextNavId
-  return null
-}
-
-function ContextIconBar({
-  active,
-  onSelect,
-}: {
-  active: ContextNavId
-  onSelect: (id: ContextNavId) => void
-}) {
-  return (
-    <nav className="context-icon-bar" aria-label="Claim sections">
-      {CONTEXT_NAV.map((item) => {
-        const isActive = active === item.id
-        return (
-          <button
-            key={item.id}
-            type="button"
-            className={
-              isActive
-                ? 'context-icon-bar__item context-icon-bar__item--active'
-                : 'context-icon-bar__item'
-            }
-            aria-label={item.label}
-            title={item.label}
-            aria-current={isActive ? 'true' : undefined}
-            onClick={() => onSelect(item.id)}
-          >
-            {item.sparkle ? <SparkleIcon /> : <Icon src={item.icon!} size={20} />}
-            {item.badge != null ? (
-              <span className="context-icon-bar__badge">{item.badge}</span>
-            ) : null}
-          </button>
-        )
-      })}
-    </nav>
-  )
-}
-
-function ClaimContextCollapseAllButton() {
-  const { collapseAll, expandAll, anyOpen } = useClaimWidgetsCollapseActions()
-
-  return (
-    <button
-      type="button"
-      className="icon-btn icon-btn--outlined"
-      aria-label={anyOpen ? 'Collapse all widgets' : 'Expand all widgets'}
-      title={anyOpen ? 'Collapse all' : 'Expand all'}
-      onClick={() => {
-        if (anyOpen) collapseAll()
-        else expandAll()
-      }}
-    >
-      <Icon src={anyOpen ? unfoldLess : unfoldMore} size={20} />
-    </button>
-  )
-}
-
-function ClaimContextHeaderTools() {
-  return (
-    <div className="claim-context-section-header__tools">
-      <ClaimContextCollapseAllButton />
-      <button type="button" className="icon-btn icon-btn--outlined" aria-label="Tune claim context">
-        <Icon src={tune} size={20} />
-      </button>
+    <div className="claim-context">
+      <div className="claim-context__canvas claim-cards" aria-label="Claim content">
+        <ClaimSummary title="Summary" />
+        <div className="claim-widgets-stack">
+          <section className="review-widget-wrap">
+            <ReviewWidget />
+          </section>
+          <section className="claim-details-widget-wrap">
+            <ClaimDetailsWidget defaultOpen />
+          </section>
+          <section className="submissions-widget-wrap">
+            <SubmissionsWidget />
+          </section>
+          <section className="documentation-widget-wrap">
+            <DocumentationWidget />
+          </section>
+          <section className="remittances-widget-wrap">
+            <RemittancesWidget />
+          </section>
+          <section className="payments-widget-wrap">
+            <PaymentsWidget />
+          </section>
+          <section className="activity-widget-wrap">
+            <ActivityWidget defaultOpen={false} />
+          </section>
+        </div>
+      </div>
     </div>
   )
 }
 
-function ClaimContextSectionHeader() {
-  return (
-    <div className="claim-context-section-header-wrap">
-      <header className="claim-context-section-header">
-        <h2 className="claim-context-section-header__title">Context</h2>
-        <ClaimContextHeaderTools />
-      </header>
-    </div>
-  )
-}
+const HOVER_CLOSE_DELAY_MS = 120
 
-function ClaimContextPanel({
-  active,
-  onSelect,
-  navCollapsed,
-  onToggleNav,
-  layout = 'nav',
-}: {
-  active: ContextNavId
-  onSelect: (id: ContextNavId) => void
-  navCollapsed: boolean
-  onToggleNav: () => void
-  layout?: 'nav' | 'iconBar'
-}) {
-  const canvasRef = useRef<HTMLDivElement>(null)
-  const flyoutCloseTimer = useRef<number | null>(null)
-  const [navFlyoutOpen, setNavFlyoutOpen] = useState(false)
-  const activityBadge = CONTEXT_NAV.find((item) => item.id === 'activity')?.badge
-  const isIconBar = layout === 'iconBar'
+/** Patient link whose hover card escapes the scrolling properties panel via a portal. */
+function PatientHoverLink({ children }: { children: ReactNode }) {
+  const [position, setPosition] = useState<{ top: number; left: number } | null>(null)
+  const linkRef = useRef<HTMLButtonElement>(null)
+  const cardRef = useRef<HTMLDivElement>(null)
+  const closeTimer = useRef<number | undefined>(undefined)
 
+  function open() {
+    window.clearTimeout(closeTimer.current)
+    const rect = linkRef.current?.getBoundingClientRect()
+    if (rect) setPosition({ top: rect.bottom + 8, left: rect.left })
+  }
+
+  function scheduleClose() {
+    window.clearTimeout(closeTimer.current)
+    closeTimer.current = window.setTimeout(() => setPosition(null), HOVER_CLOSE_DELAY_MS)
+  }
+
+  function handleBlur(event: FocusEvent<HTMLElement>) {
+    const next = event.relatedTarget as Node | null
+    if (next && (linkRef.current?.contains(next) || cardRef.current?.contains(next))) return
+    scheduleClose()
+  }
+
+  useEffect(() => () => window.clearTimeout(closeTimer.current), [])
+
+  const isOpen = position != null
   useEffect(() => {
-    const root = canvasRef.current
-    if (!root) return
-
-    const sections = SECTION_IDS.map((id) => document.getElementById(sectionDomId(id))).filter(
-      (el): el is HTMLElement => el != null,
-    )
-    if (sections.length === 0) return
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const visible = entries
-          .filter((entry) => entry.isIntersecting)
-          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)
-        const top = visible[0]
-        if (!top?.target.id) return
-        const navId = top.target.id.replace('claim-section-', '') as ContextNavId
-        if (SECTION_IDS.includes(navId)) onSelect(navId)
-      },
-      {
-        root,
-        rootMargin: '-10% 0px -55% 0px',
-        threshold: [0.15, 0.35, 0.55],
-      },
-    )
-
-    sections.forEach((section) => observer.observe(section))
-    return () => observer.disconnect()
-  }, [onSelect])
-
-  useEffect(() => {
-    if (!navCollapsed || isIconBar) setNavFlyoutOpen(false)
-  }, [navCollapsed, isIconBar])
-
-  useEffect(() => {
+    if (!isOpen) return
+    const close = () => setPosition(null)
+    window.addEventListener('scroll', close, true)
+    window.addEventListener('resize', close)
     return () => {
-      if (flyoutCloseTimer.current != null) window.clearTimeout(flyoutCloseTimer.current)
+      window.removeEventListener('scroll', close, true)
+      window.removeEventListener('resize', close)
     }
-  }, [])
-
-  function openNavFlyout() {
-    if (flyoutCloseTimer.current != null) {
-      window.clearTimeout(flyoutCloseTimer.current)
-      flyoutCloseTimer.current = null
-    }
-    setNavFlyoutOpen(true)
-  }
-
-  function scheduleCloseNavFlyout() {
-    if (flyoutCloseTimer.current != null) window.clearTimeout(flyoutCloseTimer.current)
-    flyoutCloseTimer.current = window.setTimeout(() => {
-      setNavFlyoutOpen(false)
-      flyoutCloseTimer.current = null
-    }, 120)
-  }
-
-  function handleNavSelect(id: ContextNavId) {
-    onSelect(id)
-    setNavFlyoutOpen(false)
-    const target = document.getElementById(sectionDomId(id))
-    target?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-  }
-
-  function renderNavItems() {
-    return CONTEXT_NAV.map((item) => {
-      const isActive = active === item.id
-      return (
-        <button
-          key={item.id}
-          type="button"
-          className={
-            isActive ? 'context-nav__item context-nav__item--active' : 'context-nav__item'
-          }
-          aria-current={isActive ? 'true' : undefined}
-          onClick={() => handleNavSelect(item.id)}
-        >
-          <span className="context-nav__main">
-            {item.sparkle ? <SparkleIcon /> : <Icon src={item.icon!} size={20} />}
-            <span>{item.label}</span>
-          </span>
-          {item.badge != null ? (
-            <span className="context-nav__badge">{item.badge}</span>
-          ) : null}
-        </button>
-      )
-    })
-  }
-
-  const canvas = (
-    <div ref={canvasRef} className="claim-context__canvas" aria-label="Claim content">
-      <section id={sectionDomId('summary')} className="claim-section">
-        <ClaimSummary />
-      </section>
-      <div className="claim-widgets-stack">
-        {isIconBar ? <ClaimContextSectionHeader /> : null}
-        <section id={sectionDomId('review')} className="claim-section review-widget-wrap">
-          <ReviewWidget />
-        </section>
-        <section id={sectionDomId('details')} className="claim-section claim-details-widget-wrap">
-          <ClaimDetailsWidget />
-        </section>
-        <section id={sectionDomId('submissions')} className="claim-section submissions-widget-wrap">
-          <SubmissionsWidget />
-        </section>
-        <section
-          id={sectionDomId('documentation')}
-          className="claim-section documentation-widget-wrap"
-        >
-          <DocumentationWidget />
-        </section>
-        <section id={sectionDomId('remittances')} className="claim-section remittances-widget-wrap">
-          <RemittancesWidget />
-        </section>
-        <section id={sectionDomId('payments')} className="claim-section payments-widget-wrap">
-          <PaymentsWidget />
-        </section>
-        <section id={sectionDomId('activity')} className="claim-section activity-widget-wrap">
-          <ActivityWidget />
-        </section>
-      </div>
-    </div>
-  )
-
-  if (isIconBar) {
-    return (
-      <div className="claim-context">
-        <div className="claim-context__body">
-          <ContextIconBar active={active} onSelect={handleNavSelect} />
-          {canvas}
-        </div>
-      </div>
-    )
-  }
+  }, [isOpen])
 
   return (
-    <div className="claim-context claim-context--v1">
-      <div className="panel-header">
-        <div
-          className="panel-header__menu-wrap"
-          onMouseEnter={() => {
-            if (navCollapsed) openNavFlyout()
-          }}
-          onMouseLeave={() => {
-            if (navCollapsed) scheduleCloseNavFlyout()
-          }}
-        >
-          <button
-            type="button"
-            className={
-              navCollapsed
-                ? 'icon-btn panel-header__menu'
-                : 'icon-btn icon-btn--bordered panel-header__menu'
-            }
-            aria-label={navCollapsed ? 'Expand claim context nav' : 'Collapse claim context nav'}
-            aria-expanded={!navCollapsed || navFlyoutOpen}
-            aria-haspopup={navCollapsed ? 'menu' : undefined}
-            onClick={onToggleNav}
-            onFocus={() => {
-              if (navCollapsed) openNavFlyout()
-            }}
-            onBlur={(event) => {
-              if (!navCollapsed) return
-              const next = event.relatedTarget
-              if (next instanceof Node && event.currentTarget.parentElement?.contains(next)) {
-                return
-              }
-              scheduleCloseNavFlyout()
-            }}
-          >
-            <Icon src={menu} size={20} />
-            {activityBadge != null ? (
-              <span className="panel-header__menu-badge">{activityBadge}</span>
-            ) : null}
-          </button>
-          {navCollapsed && navFlyoutOpen ? (
-            <nav
-              className="context-nav context-nav--floating"
-              aria-label="Claim sections"
-              onMouseEnter={openNavFlyout}
-              onMouseLeave={scheduleCloseNavFlyout}
+    <>
+      <button
+        ref={linkRef}
+        type="button"
+        className="properties-field__value properties-field__link"
+        aria-haspopup="dialog"
+        aria-expanded={position != null}
+        onMouseEnter={open}
+        onMouseLeave={scheduleClose}
+        onFocus={open}
+        onBlur={handleBlur}
+        onKeyDown={(event) => {
+          if (event.key === 'Escape') setPosition(null)
+        }}
+      >
+        {children}
+      </button>
+      {position
+        ? createPortal(
+            <div
+              ref={cardRef}
+              className="suggestion-hover properties-patient-hover"
+              role="dialog"
+              aria-label="Patient details"
+              style={{ top: position.top, left: position.left }}
+              onMouseEnter={open}
+              onMouseLeave={scheduleClose}
+              onBlur={handleBlur}
             >
-              {renderNavItems()}
-            </nav>
-          ) : null}
-        </div>
-        <h2 className="panel-header__title">Claim Context</h2>
-        <button type="button" className="icon-btn icon-btn--outlined" aria-label="Tune claim context">
-          <Icon src={tune} size={20} />
-        </button>
-      </div>
-
-      <div className="claim-context__body">
-        {!navCollapsed ? (
-          <nav className="context-nav" aria-label="Claim sections">
-            {renderNavItems()}
-          </nav>
-        ) : null}
-        {canvas}
-      </div>
-    </div>
+              <PatientHoverCard />
+            </div>,
+            document.body,
+          )
+        : null}
+    </>
   )
 }
 
-function PropertiesPanel({ collapsed = false }: { collapsed?: boolean }) {
+/** Synthetic demo property values from Figma — not real PHI/PII. */
+function PropertiesPanel({
+  collapsed,
+  onToggle,
+  status,
+}: {
+  collapsed: boolean
+  onToggle: () => void
+  status: string
+}) {
   if (collapsed) {
     return (
       <aside className="properties-panel properties-panel--collapsed" aria-label="Properties">
         <div className="properties-panel__rail">
-          <button type="button" className="icon-btn" aria-label="Expand properties" title="Expand">
-            <Icon src={leftPanelClose} size={24} />
+          <button
+            type="button"
+            className="icon-btn"
+            aria-label="Expand properties"
+            title="Expand"
+            onClick={onToggle}
+          >
+            <Icon src={leftPanelClose} size={24} className="icon--flip-x" />
           </button>
           <button type="button" className="icon-btn" aria-label="Cancel send" title="Cancel send">
             <Icon src={propsCancelSend} size={24} />
@@ -820,38 +654,184 @@ function PropertiesPanel({ collapsed = false }: { collapsed?: boolean }) {
     <aside className="properties-panel" aria-label="Properties">
       <div className="panel-header panel-header--properties">
         <h2 className="panel-header__title">Properties</h2>
-        <button type="button" className="icon-btn" aria-label="Close properties panel">
-          <Icon src={dockToRight} size={18} />
+        <button
+          type="button"
+          className="icon-btn"
+          aria-label="Collapse properties"
+          title="Collapse"
+          onClick={onToggle}
+        >
+          <Icon src={leftPanelClose} size={18} />
         </button>
       </div>
-      <div className="properties-panel__body" />
+      <div className="properties-panel__body">
+        <div className="properties-field">
+          <span className="properties-field__label">Status</span>
+          <div className="properties-tags">
+            {claimTypeForStatus(status) === 'denials' ? (
+              <span className="properties-badge properties-badge--icon properties-badge--strong">
+                <img src={propsBlock} alt="" width={16} height={16} />
+                {status}
+              </span>
+            ) : (
+              <span className="properties-badge properties-badge--strong">{status}</span>
+            )}
+            <span className="properties-badge properties-badge--strong">3d</span>
+          </div>
+        </div>
+        <div className="properties-field">
+          <span className="properties-field__label">Stage</span>
+          <span className="properties-badge properties-badge--icon properties-badge--stage">
+            <img src={propsStageProgress} alt="" width={16} height={16} />
+            Payer 1
+          </span>
+        </div>
+        <div className="properties-field properties-field--compact">
+          <span className="properties-field__label">Patient</span>
+          <PatientHoverLink>Cole Crawford, 14</PatientHoverLink>
+        </div>
+        <div className="properties-field properties-field--compact">
+          <span className="properties-field__label">Provider</span>
+          <span className="properties-field__value">Nicholas Grimoskas</span>
+        </div>
+        <div className="properties-field properties-field--compact">
+          <span className="properties-field__label">Date of Service</span>
+          <span className="properties-field__value">Sep 25, 2026</span>
+        </div>
+        <div className="properties-field">
+          <span className="properties-field__label">Assignee</span>
+          <button
+            type="button"
+            className="properties-avatar properties-avatar--assignee"
+            aria-label="Assignee: TB"
+            title="TB"
+          >
+            TB
+          </button>
+        </div>
+        <div className="properties-field">
+          <span className="properties-field__label">Tags</span>
+          <button type="button" className="icon-btn icon-btn--outlined" aria-label="Add tag" title="Add tag">
+            <img src={propsTagAdd} alt="" width={18} height={18} />
+          </button>
+        </div>
+        <div className="properties-field">
+          <span className="properties-field__label">Insurance</span>
+          <span className="properties-badge properties-badge--icon properties-badge--truncate">
+            <img src={submissionsPaid} alt="" width={16} height={16} />
+            <span className="properties-badge__text">UNITED MEDICAL RESOURCES</span>
+          </span>
+        </div>
+        <div className="properties-field">
+          <span className="properties-field__label">Submitted Insurance</span>
+          <span className="properties-badge properties-badge--truncate">
+            <span className="properties-badge__text">UNITED MEDICAL RESOURCES</span>
+          </span>
+        </div>
+
+        <div className="properties-divider" aria-hidden />
+
+        <div className="properties-field">
+          <span className="properties-field__label">EHR Import Status</span>
+          <span className="properties-badge properties-badge--icon">
+            <img src={propsSyncDisabled} alt="" width={16} height={16} />
+            Disabled
+          </span>
+        </div>
+        <div className="properties-field properties-field--compact">
+          <span className="properties-field__label">Last Updated</span>
+          <span className="properties-field__value">Today at 11:28 AM</span>
+        </div>
+        <div className="properties-field properties-field--compact">
+          <span className="properties-field__label">EHR Claim ID</span>
+          <span className="properties-field__value">-</span>
+        </div>
+      </div>
     </aside>
   )
 }
 
 export function ClaimDetailsPage() {
-  const [version, setVersion] = useState<ClaimVersion>('current')
+  const [initialPrefs, setInitialPrefs] = useState<LayoutPreferences | null>(null)
+
+  useEffect(() => {
+    let active = true
+    loadLayoutPreferences().then((prefs) => {
+      if (active) setInitialPrefs(prefs)
+    })
+    return () => {
+      active = false
+    }
+  }, [])
+
+  // The saved layout must be known before the claim renders so it never shifts mid-claim.
+  if (!initialPrefs) return <div className="app-shell" aria-busy="true" />
+  return <ClaimDetailsPageLoaded initialPrefs={initialPrefs} />
+}
+
+function ClaimDetailsPageLoaded({ initialPrefs }: { initialPrefs: LayoutPreferences }) {
+  const [version, setVersion] = useState<ClaimVersion>('option2')
+  const [claimIndex, setClaimIndex] = useState(0)
+  /** Record details collapse Properties for room; that isn't a saved layout choice. */
+  const [propertiesForced, setPropertiesForced] = useState(false)
+  const layouts = useClaimLayouts(initialPrefs, claimTypeForStatus(CLAIM_QUEUE[0].status))
+  const propertiesCollapsed = propertiesForced || !layouts.layout.propertiesOpen
+
   return (
-    <WidgetViewProvider allowDualSplit={version === 'current'}>
-      <ClaimDetailsPageInner version={version} onVersionChange={setVersion} />
+    <WidgetViewProvider
+      allowDualSplit={version === 'option1'}
+      onRecordOpen={version === 'option2' ? () => setPropertiesForced(true) : undefined}
+    >
+      <ClaimDetailsPageInner
+        version={version}
+        onVersionChange={setVersion}
+        propertiesCollapsed={propertiesCollapsed}
+        onToggleProperties={() => {
+          setPropertiesForced(false)
+          layouts.updateLayout((current) => ({ ...current, propertiesOpen: propertiesCollapsed }))
+        }}
+        layouts={layouts}
+        claimIndex={claimIndex}
+        onClaimOpened={(index) => {
+          setClaimIndex(index)
+          setPropertiesForced(false)
+        }}
+      />
+      {layouts.toast ? <Toast message={layouts.toast} onDismiss={layouts.dismissToast} /> : null}
     </WidgetViewProvider>
   )
 }
 
+const LAYOUT_HIGHLIGHT_MS = 1600
+
 function ClaimDetailsPageInner({
   version,
   onVersionChange,
+  propertiesCollapsed,
+  onToggleProperties,
+  layouts,
+  claimIndex,
+  onClaimOpened,
 }: {
   version: ClaimVersion
   onVersionChange: (value: ClaimVersion) => void
+  propertiesCollapsed: boolean
+  onToggleProperties: () => void
+  layouts: ClaimLayouts
+  claimIndex: number
+  onClaimOpened: (index: number) => void
 }) {
-  const [activeNav, setActiveNav] = useState<ContextNavId>('summary')
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
-  const [contextNavCollapsed, setContextNavCollapsed] = useState(true)
-
-  useEffect(() => {
-    if (version === 'v1') setContextNavCollapsed(true)
-  }, [version])
+  const { layout } = layouts
+  const claim = CLAIM_QUEUE[claimIndex]
+  const [summaryWidth, setSummaryWidth] = useState(SUMMARY_DEFAULT_WIDTH)
+  const [layoutHighlight, setLayoutHighlight] = useState(false)
+  const highlightTimer = useRef<number | undefined>(undefined)
+  const split = useClaimSplitView(layout.split, (next) => {
+    layouts.updateLayout((current) => ({ ...current, split: next }))
+  })
+  const [recordExpanded, setRecordExpanded] = useState(false)
+  const [recordWidth, setRecordWidth] = useState<number | null>(null)
   const { view, close, openSide, openSplit, openFull, navigateRecord, closeSplitPane } =
     useWidgetView()
 
@@ -859,20 +839,6 @@ function ClaimDetailsPageInner({
   const isSplit = view?.mode === 'split'
   const isSide = view?.mode === 'side'
   const isDualSplit = isSplit && view?.secondary != null
-  const fullViewNavId = widgetIdToNavId(view?.widgetId)
-
-  function selectContextSection(id: ContextNavId) {
-    setActiveNav(id)
-    if (isFull) close()
-    window.requestAnimationFrame(() => {
-      window.requestAnimationFrame(() => {
-        document.getElementById(sectionDomId(id))?.scrollIntoView({
-          behavior: 'smooth',
-          block: 'start',
-        })
-      })
-    })
-  }
 
   function renderSideOverlay() {
     if (!isSide || !view) return null
@@ -934,78 +900,161 @@ function ClaimDetailsPageInner({
     )
   }
 
-  let stageContent: ReactNode
-  if (version === 'current') {
-    stageContent = (
-      <>
-        {isFull && view ? (
-          <div className="claim-context claim-context--full-view">
-            <div className="claim-context__body">
-              <ContextIconBar
-                active={fullViewNavId ?? activeNav}
-                onSelect={selectContextSection}
-              />
-              <WidgetViewPanel
-                mode="full"
-                title={view.title}
-                widgetId={view.widgetId}
-                onClose={close}
-              />
-            </div>
-          </div>
-        ) : isDualSplit ? (
-          renderDualSplitPanels()
-        ) : (
-          <>
-            <ClaimContextPanel
-              active={activeNav}
-              onSelect={setActiveNav}
-              navCollapsed={contextNavCollapsed}
-              onToggleNav={() => setContextNavCollapsed((value) => !value)}
-              layout="iconBar"
-            />
-            {renderSplitPanel()}
-          </>
-        )}
-        <PropertiesPanel collapsed={isSplit} />
-        {renderSideOverlay()}
-      </>
+  const isV2Record = version === 'option2' && isSide && view != null
+  const summaryOpen = layout.summaryOpen
+  const summaryVisible = summaryOpen && !isV2Record
+  const v2RecordFill = isV2Record && recordExpanded
+
+  function setSummary(open: boolean) {
+    layouts.updateLayout((current) => ({ ...current, summaryOpen: open }))
+  }
+
+  function toggleSummary() {
+    if (isV2Record) {
+      closeV2Record()
+      setSummary(true)
+      return
+    }
+    setSummary(!summaryOpen)
+  }
+
+  function closeV2Record() {
+    setRecordExpanded(false)
+    close()
+  }
+
+  function highlightLayoutButton() {
+    window.clearTimeout(highlightTimer.current)
+    setLayoutHighlight(false)
+    window.requestAnimationFrame(() => setLayoutHighlight(true))
+    highlightTimer.current = window.setTimeout(() => setLayoutHighlight(false), LAYOUT_HIGHLIGHT_MS)
+  }
+
+  function goToClaim(index: number) {
+    if (index < 0 || index >= CLAIM_QUEUE.length || index === claimIndex) return
+    const nextType = claimTypeForStatus(CLAIM_QUEUE[index].status)
+    const typeChanged = nextType !== layouts.claimType
+    closeV2Record()
+    onClaimOpened(index)
+    layouts.openClaim(nextType)
+    if (typeChanged && !layouts.useForAll) highlightLayoutButton()
+  }
+
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey) return
+      const key = event.key.toLowerCase()
+      if (key !== 'j' && key !== 'k') return
+      const target = event.target instanceof Element ? event.target : null
+      if (target?.closest('input, textarea, select, [contenteditable="true"], [role="combobox"]')) {
+        return
+      }
+      if (document.querySelector('[aria-modal="true"]')) return
+      event.preventDefault()
+      goToClaim(claimIndex + (key === 'j' ? 1 : -1))
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  })
+
+  useEffect(() => () => window.clearTimeout(highlightTimer.current), [])
+
+  const layoutMenu =
+    version === 'option2' ? (
+      <LayoutMenu
+        label={layouts.scopeLabel}
+        customized={layouts.isCustomized}
+        highlight={layoutHighlight}
+        resetLabel={`Reset ${layouts.scopeLabel} layout`}
+        resetDisabled={!layouts.isCustomized}
+        useForAll={layouts.useForAll}
+        resetAllDisabled={!layouts.hasSavedLayouts && !layouts.isCustomized}
+        onReset={layouts.resetCurrent}
+        onToggleUseForAll={() => layouts.setUseForAll(!layouts.useForAll)}
+        onResetAll={layouts.resetAll}
+      />
+    ) : null
+
+  function renderV2Record() {
+    if (!isV2Record || !view) return null
+    return (
+      <WidgetViewPanel
+        mode="side"
+        docked
+        expanded={recordExpanded}
+        onToggleExpand={() => setRecordExpanded((value) => !value)}
+        width={recordWidth}
+        onWidthChange={setRecordWidth}
+        title={view.recordTitle ?? view.title}
+        widgetId={view.widgetId}
+        onClose={closeV2Record}
+        recordIndex={view.recordIndex}
+        recordCount={view.records?.length}
+        onNavigateRecord={navigateRecord}
+      />
     )
-  } else if (isFull && view) {
+  }
+
+  const propertiesPanel = (
+    <PropertiesPanel
+      collapsed={propertiesCollapsed}
+      onToggle={onToggleProperties}
+      status={claim.status}
+    />
+  )
+
+  let stageContent: ReactNode
+  if (isFull && view) {
     stageContent = (
       <>
+        {propertiesPanel}
         <WidgetViewPanel
           mode="full"
           title={view.title}
           widgetId={view.widgetId}
           onClose={close}
         />
-        <PropertiesPanel collapsed={isSplit} />
         {renderSideOverlay()}
       </>
     )
-  } else if (version === 'v2') {
+  } else if (version === 'option1') {
     stageContent = (
       <>
-        <ClaimV2Panel />
-        {renderSplitPanel()}
-        <PropertiesPanel collapsed={isSplit} />
+        {propertiesPanel}
+        {isDualSplit ? (
+          renderDualSplitPanels()
+        ) : (
+          <>
+            <ClaimOption1Panel />
+            {renderSplitPanel()}
+          </>
+        )}
         {renderSideOverlay()}
       </>
     )
   } else {
     stageContent = (
       <>
-        <ClaimContextPanel
-          active={activeNav}
-          onSelect={setActiveNav}
-          navCollapsed={contextNavCollapsed}
-          onToggleNav={() => setContextNavCollapsed((value) => !value)}
-          layout="nav"
-        />
+        {propertiesPanel}
+        {v2RecordFill ? null : (
+          <ClaimV2Panel
+            split={split}
+            tabOrder={layout.tabOrder}
+            onTabOrderChange={(tabOrder) =>
+              layouts.updateLayout((current) => ({ ...current, tabOrder }))
+            }
+            showSplitHint={!layouts.splitHintDismissed}
+            onDismissSplitHint={layouts.dismissSplitHint}
+          />
+        )}
         {renderSplitPanel()}
-        <PropertiesPanel collapsed={isSplit} />
-        {renderSideOverlay()}
+        {summaryVisible ? (
+          <ClaimV2Aside
+            width={summaryWidth}
+            onWidthChange={setSummaryWidth}
+          />
+        ) : null}
+        {renderV2Record()}
       </>
     )
   }
@@ -1020,31 +1069,27 @@ function ClaimDetailsPageInner({
         />
         <div className="content-row">
           <section className="app-canvas" aria-label="Claim details">
-            {version === 'current' || version === 'v1' ? (
-              <ClaimWidgetsCollapseProvider>
-                <ClaimPageHeader
-                  version={version}
-                  onVersionChange={onVersionChange}
-                  fullViewTitle={isFull ? view?.title ?? null : null}
-                  onExitFullView={close}
-                />
-                <div className="canvas-body">
-                  <div className="canvas-stage">{stageContent}</div>
+            <ClaimWidgetsCollapseProvider>
+              <ClaimPageHeader
+                version={version}
+                onVersionChange={onVersionChange}
+                fullViewTitle={isFull ? view?.title ?? null : null}
+                onExitFullView={close}
+                summaryOpen={version === 'option2' ? summaryVisible : undefined}
+                onToggleSummary={version === 'option2' ? toggleSummary : undefined}
+                claimId={claim.id}
+                claimPosition={claimIndex + 1}
+                claimCount={CLAIM_QUEUE.length}
+                onNextClaim={() => goToClaim(claimIndex + 1)}
+                onPreviousClaim={() => goToClaim(claimIndex - 1)}
+                layoutMenu={layoutMenu}
+              />
+              <div className="canvas-body">
+                <div className="canvas-stage" key={claim.id}>
+                  {stageContent}
                 </div>
-              </ClaimWidgetsCollapseProvider>
-            ) : (
-              <>
-                <ClaimPageHeader
-                  version={version}
-                  onVersionChange={onVersionChange}
-                  fullViewTitle={isFull ? view?.title ?? null : null}
-                  onExitFullView={close}
-                />
-                <div className="canvas-body">
-                  <div className="canvas-stage">{stageContent}</div>
-                </div>
-              </>
-            )}
+              </div>
+            </ClaimWidgetsCollapseProvider>
           </section>
         </div>
       </div>

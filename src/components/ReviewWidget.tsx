@@ -11,7 +11,6 @@ import {
   reviewWarning,
 } from '../assets/icons'
 import { ClaimWidgetTitle, useClaimWidgetOpen } from './ClaimWidgetCollapse'
-import { WidgetViewButtons } from './widgetView'
 
 export type ReviewStage = 'idle' | 'progress' | 'errors' | 'passed'
 
@@ -243,11 +242,6 @@ export function ReviewWidget({
             titleId="review-widget-title"
             titleClassName="review-widget__title"
             controlsId={contentId}
-          />
-          <WidgetViewButtons
-            widgetId="review"
-            title="Review"
-            className="review-widget__actions"
           />
         </header>
       )}

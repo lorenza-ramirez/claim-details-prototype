@@ -7,67 +7,12 @@ import {
 } from '../assets/icons'
 import { AppealPackageModal } from './AppealPackageModal'
 import { ClaimWidgetTitle, useClaimWidgetOpen } from './ClaimWidgetCollapse'
-import { useWidgetView, WidgetViewButtons } from './widgetView'
-
-type StatusKind = 'error' | 'paid' | 'denied'
-type IndexKind = 'primary' | 'secondary'
-
-type SubmissionRow = {
-  id: string
-  created: string
-  submitted: string
-  status: StatusKind
-  statusLabel: string
-  charges: string
-  index: IndexKind
-  payer: string
-  memberId: string
-  type: string
-  method: string
-}
-
-/** Synthetic demo submissions — not real PHI/PII. */
-const ROWS: SubmissionRow[] = [
-  {
-    id: 'ARC680055',
-    created: '07/21/2026',
-    submitted: 'Not Submitted',
-    status: 'error',
-    statusLabel: 'Submission Error',
-    charges: '$234.34',
-    index: 'secondary',
-    payer: 'NEW YORK MEDICAID - PHASE II',
-    memberId: 'BQ60358Y',
-    type: 'Initial',
-    method: 'CHC',
-  },
-  {
-    id: 'ARC680055',
-    created: '2/17/2026',
-    submitted: '2/17/2026',
-    status: 'paid',
-    statusLabel: 'Paid',
-    charges: '$234.34',
-    index: 'primary',
-    payer: 'United Healthcare',
-    memberId: 'BQ60358Y',
-    type: 'Resubmission',
-    method: 'CHC',
-  },
-  {
-    id: 'ARC680055',
-    created: '1/10/2026',
-    submitted: '1/10/2026',
-    status: 'denied',
-    statusLabel: 'Denied',
-    charges: '$234.34',
-    index: 'primary',
-    payer: 'United Healthcare',
-    memberId: 'BQ60358Y',
-    type: 'Initial',
-    method: 'CHC',
-  },
-]
+import { recordIsOpen, useWidgetView, WidgetViewButtons } from './widgetView'
+import {
+  SUBMISSION_RECORDS,
+  SUBMISSION_ROWS as ROWS,
+  type SubmissionStatusKind as StatusKind,
+} from './submissionsData'
 
 const STATUS_ICON: Record<StatusKind, string> = {
   error: submissionsError,
@@ -77,11 +22,11 @@ const STATUS_ICON: Record<StatusKind, string> = {
 
 export function SubmissionsWidget({ hideHeader = false }: { hideHeader?: boolean }) {
   const [appealOpen, setAppealOpen] = useState(false)
-  const { openSide } = useWidgetView()
+  const { view, openSide } = useWidgetView()
   const { open, contentId, toggle, collapsible } = useClaimWidgetOpen()
   const isOpen = !collapsible || open
   const showBody = hideHeader || isOpen
-  const records = ROWS.map((row) => `${row.id} · ${row.created}`)
+  const records = SUBMISSION_RECORDS
 
   function openRecord(index: number) {
     openSide('submissions', 'Submissions', records[index], records)
@@ -174,9 +119,14 @@ export function SubmissionsWidget({ hideHeader = false }: { hideHeader?: boolean
             {ROWS.map((row, index) => (
               <tr
                 key={`${row.id}-${row.created}-${index}`}
-                className="widget-table-row"
+                className={
+                  recordIsOpen(view, 'submissions', records[index])
+                    ? 'widget-table-row widget-table-row--open'
+                    : 'widget-table-row'
+                }
                 tabIndex={0}
                 role="button"
+                aria-current={recordIsOpen(view, 'submissions', records[index]) ? 'true' : undefined}
                 aria-label={`Open submission ${records[index]}`}
                 onClick={() => openRecord(index)}
                 onKeyDown={(event) => {
@@ -206,14 +156,14 @@ export function SubmissionsWidget({ hideHeader = false }: { hideHeader?: boolean
                   </span>
                 </td>
                 <td className="submissions-widget__td submissions-widget__td--truncate">
-                  <span>{row.payer}</span>
+                  <span title={row.payer}>{row.payer}</span>
                 </td>
                 <td className="submissions-widget__td submissions-widget__td--end">{row.memberId}</td>
                 <td className="submissions-widget__td submissions-widget__td--truncate">
-                  <span>{row.type}</span>
+                  <span title={row.type}>{row.type}</span>
                 </td>
                 <td className="submissions-widget__td submissions-widget__td--truncate">
-                  <span>{row.method}</span>
+                  <span title={row.method}>{row.method}</span>
                 </td>
                 <td className="submissions-widget__td submissions-widget__td--action">
                   <button

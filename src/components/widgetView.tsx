@@ -4,10 +4,12 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from 'react'
 import {
+  collapseContent,
   dockToRight,
   expandContent,
   keyboardArrowDown2,
@@ -17,7 +19,11 @@ import {
   viewMenu,
   viewPreview,
 } from '../assets/icons'
+import appealClose from '../assets/figma/appeal-close.svg'
 import { ClaimDetailsSplitContent } from './ClaimDetailsSplitContent'
+import { RemittanceDetail } from './RemittanceDetail'
+import { ResizeHandle } from './ResizeHandle'
+import { SubmissionDetail } from './SubmissionDetail'
 
 export type WidgetViewId =
   | 'details'
@@ -48,6 +54,15 @@ export type WidgetViewState = {
   recordIndex?: number
 }
 
+/** Whether a table row is the record currently open in the side view. */
+export function recordIsOpen(
+  view: WidgetViewState | null,
+  widgetId: WidgetViewId,
+  recordTitle: string,
+) {
+  return view?.mode === 'side' && view.widgetId === widgetId && view.recordTitle === recordTitle
+}
+
 type WidgetViewContextValue = {
   view: WidgetViewState | null
   openSplit: (widgetId: WidgetViewId, title: string) => void
@@ -68,11 +83,16 @@ const WidgetViewContext = createContext<WidgetViewContextValue | null>(null)
 export function WidgetViewProvider({
   children,
   allowDualSplit = false,
+  onRecordOpen,
 }: {
   children: ReactNode
   allowDualSplit?: boolean
+  /** Called when a table row opens its record detail. */
+  onRecordOpen?: () => void
 }) {
   const [view, setView] = useState<WidgetViewState | null>(null)
+  const onRecordOpenRef = useRef(onRecordOpen)
+  onRecordOpenRef.current = onRecordOpen
 
   useEffect(() => {
     if (allowDualSplit) return
@@ -138,6 +158,7 @@ export function WidgetViewProvider({
         records: list,
         recordIndex,
       })
+      if (recordTitle) onRecordOpenRef.current?.()
     },
     [],
   )
@@ -256,6 +277,10 @@ export function WidgetViewButtons({
   )
 }
 
+const RECORD_MIN_WIDTH = 400
+/** Space kept for the claim tabs beside a resized record detail. */
+const RECORD_MIN_MAIN_WIDTH = 360
+
 /** Empty shell for split / full / side widget views (content TBD). */
 export function WidgetViewPanel({
   mode,
@@ -268,6 +293,11 @@ export function WidgetViewPanel({
   recordIndex,
   recordCount,
   onNavigateRecord,
+  docked = false,
+  expanded = false,
+  onToggleExpand,
+  width,
+  onWidthChange,
 }: {
   mode: WidgetViewMode
   title: string
@@ -279,7 +309,16 @@ export function WidgetViewPanel({
   recordIndex?: number
   recordCount?: number
   onNavigateRecord?: (delta: -1 | 1) => void
+  /** Renders in the page flow (Option 2 record detail) with expand + close only. */
+  docked?: boolean
+  expanded?: boolean
+  onToggleExpand?: () => void
+  /** Docked width in px; null keeps the default half-width column. */
+  width?: number | null
+  onWidthChange?: (width: number | null) => void
 }) {
+  const [resizing, setResizing] = useState(false)
+  const resizable = docked && !expanded && onWidthChange != null
   const showSplitActions = mode === 'split'
   const showSideActions = mode === 'side'
   const showRecordNav =
@@ -292,11 +331,33 @@ export function WidgetViewPanel({
   const canGoPrev = showRecordNav && recordIndex > 0
   const canGoNext = showRecordNav && recordIndex < recordCount - 1
 
+  const panelClassName = [
+    'widget-view-panel',
+    `widget-view-panel--${mode}`,
+    docked ? 'widget-view-panel--docked' : '',
+    docked && expanded ? 'widget-view-panel--expanded' : '',
+    resizing ? 'resize-handle-active' : '',
+  ]
+    .filter(Boolean)
+    .join(' ')
+
   return (
     <aside
-      className={`widget-view-panel widget-view-panel--${mode}`}
+      className={panelClassName}
+      style={resizable && width != null ? { flex: '0 0 auto', width } : undefined}
       aria-label={`${title} ${mode} view`}
     >
+      {resizable ? (
+        <ResizeHandle
+          width={width ?? undefined}
+          min={RECORD_MIN_WIDTH}
+          max={(containerWidth) => containerWidth - RECORD_MIN_MAIN_WIDTH}
+          label="Resize record detail"
+          onWidthChange={onWidthChange}
+          onReset={() => onWidthChange(null)}
+          onResizingChange={setResizing}
+        />
+      ) : null}
       <div className="panel-header widget-view-panel__header">
         {showSplitActions ? (
           <button
@@ -377,25 +438,40 @@ export function WidgetViewPanel({
                 <span className="widget-view-panel__header-divider" aria-hidden />
               </>
             ) : null}
-            <button
-              type="button"
-              className="icon-btn icon-btn--outlined"
-              aria-label="Split view"
-              title="Split View"
-              onClick={onOpenSplit}
-            >
-              <Icon src={leftPanelClose} size={20} />
-            </button>
-            <button
-              type="button"
-              className="icon-btn icon-btn--outlined"
-              aria-label="Full page"
-              title="Full Page"
-              onClick={onOpenFull}
-            >
-              <Icon src={expandContent} size={20} />
-            </button>
-            <span className="widget-view-panel__header-divider" aria-hidden />
+            {docked ? (
+              <button
+                type="button"
+                className="icon-btn icon-btn--outlined"
+                aria-label={expanded ? 'Collapse record' : 'Expand record'}
+                aria-pressed={expanded}
+                title={expanded ? 'Collapse' : 'Expand'}
+                onClick={onToggleExpand}
+              >
+                <Icon src={expanded ? collapseContent : expandContent} size={20} />
+              </button>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  className="icon-btn icon-btn--outlined"
+                  aria-label="Split view"
+                  title="Split View"
+                  onClick={onOpenSplit}
+                >
+                  <Icon src={leftPanelClose} size={20} />
+                </button>
+                <button
+                  type="button"
+                  className="icon-btn icon-btn--outlined"
+                  aria-label="Full page"
+                  title="Full Page"
+                  onClick={onOpenFull}
+                >
+                  <Icon src={expandContent} size={20} />
+                </button>
+                <span className="widget-view-panel__header-divider" aria-hidden />
+              </>
+            )}
             <button
               type="button"
               className="icon-btn icon-btn--outlined"
@@ -403,7 +479,7 @@ export function WidgetViewPanel({
               title="Close"
               onClick={onClose}
             >
-              <Icon src={viewDoubleArrow} size={20} />
+              <Icon src={docked ? appealClose : viewDoubleArrow} size={20} />
             </button>
           </div>
         ) : (
@@ -419,6 +495,12 @@ export function WidgetViewPanel({
       </div>
       <div className="widget-view-panel__body">
         {widgetId === 'details' ? <ClaimDetailsSplitContent /> : null}
+        {widgetId === 'submissions' && mode === 'side' && recordIndex != null ? (
+          <SubmissionDetail key={recordIndex} recordIndex={recordIndex} />
+        ) : null}
+        {widgetId === 'remittances' && mode === 'side' && recordIndex != null ? (
+          <RemittanceDetail key={recordIndex} recordIndex={recordIndex} />
+        ) : null}
       </div>
     </aside>
   )

@@ -1,17 +1,16 @@
 import type { ReactNode } from 'react'
 import {
   activityAppointment,
-  activityArrow,
-  activityAthelas,
   activityAttach,
-  activityBullseye,
-  activityCheck,
   activityMic,
-  activityMinus,
-  activityPlus,
+  appealInfo,
+  propsBlock,
+  propsStage,
+  propsStageProgress,
+  sendPanel,
+  submissionsRejected,
 } from '../assets/icons'
 import { ClaimWidgetTitle, useClaimWidgetOpen } from './ClaimWidgetCollapse'
-import { WidgetViewButtons } from './widgetView'
 
 type Adornment =
   | { kind: 'icon'; src: string }
@@ -20,18 +19,30 @@ type Adornment =
 
 type ActivityLine = {
   id: string
-  adornment: Adornment
-  body: ReactNode
+  adornment?: Adornment
+  body?: ReactNode
+  time: string
   viewMore?: boolean
   last?: boolean
-  children?: { id: string; icon: string; body: ReactNode }[]
+  note?: { initials: string; tone: 'lilac' | 'navy'; name: string; message: string }
+  children?: { id: string; body: ReactNode }[]
+}
+
+function Pill({ icon, children }: { icon: string; children: ReactNode }) {
+  return (
+    <span className="activity-widget__pill">
+      <img src={icon} alt="" width={14} height={14} />
+      {children}
+    </span>
+  )
 }
 
 /** Synthetic demo activity — not real PHI/PII. */
 const ITEMS: ActivityLine[] = [
   {
-    id: '1',
+    id: 'appointment',
     adornment: { kind: 'icon', src: activityAppointment },
+    time: '3 weeks ago',
     body: (
       <>
         <span className="activity-widget__strong">Appointment</span> occurred
@@ -39,150 +50,100 @@ const ITEMS: ActivityLine[] = [
     ),
   },
   {
-    id: '2',
-    adornment: { kind: 'avatar', src: activityAthelas, alt: 'Athelas' },
+    id: 'record-attached',
+    adornment: { kind: 'icon', src: activityAttach },
+    time: '3 weeks ago',
     body: (
       <>
-        <span className="activity-widget__strong">Athelas</span> created this claim
+        <span className="activity-widget__strong">Medical record</span> attached to claim
       </>
     ),
+  },
+  {
+    id: 'stage',
+    adornment: { kind: 'icon', src: propsStage },
+    time: '3 weeks ago',
+    body: (
+      <>
+        Claim stage set to <Pill icon={propsStageProgress}>Payer 1</Pill>
+      </>
+    ),
+  },
+  {
+    id: 'submitted',
+    adornment: { kind: 'icon', src: sendPanel },
+    time: '20 days ago',
     viewMore: true,
-  },
-  {
-    id: '3',
-    adornment: { kind: 'icon', src: activityBullseye },
     body: (
       <>
-        Claim marked <span className="activity-widget__strong">not ready to submit</span>
+        Claim submitted for <span className="activity-widget__strong">$205.00</span> to primary
+        insurance UNITED MEDICAL RESOURCES
       </>
     ),
   },
   {
-    id: '4',
-    adornment: { kind: 'avatar', src: activityAthelas, alt: 'Athelas' },
-    body: (
-      <>
-        <span className="activity-widget__strong">Athelas</span> updated this claims status to ⚠️{' '}
-        <span className="activity-widget__strong">Unsupported by CHC</span> ⤵️{' '}
-        <span className="activity-widget__strong">Payer 1</span>
-      </>
-    ),
-  },
-  {
-    id: '5',
-    adornment: { kind: 'icon', src: activityArrow },
-    body: (
-      <>
-        Claim ownership <span className="activity-widget__strong">set to Athelas</span>
-      </>
-    ),
-  },
-  {
-    id: '6',
-    adornment: { kind: 'icon', src: activityArrow },
-    body: (
-      <>
-        Claim set to ✏️ <span className="activity-widget__strong">Needs Initial Review</span>
-      </>
-    ),
-  },
-  {
-    id: '7',
-    adornment: { kind: 'avatar', src: activityAthelas, alt: 'Athelas' },
-    body: (
-      <>
-        <span className="activity-widget__strong">Athelas</span> added procedure{' '}
-        <span className="activity-widget__strong">1234543</span>
-      </>
-    ),
+    id: 'remit',
+    adornment: { kind: 'icon', src: submissionsRejected },
+    time: '2 days ago',
     viewMore: true,
-  },
-  {
-    id: '8',
-    adornment: { kind: 'avatar', src: activityAthelas, alt: 'Athelas' },
     body: (
       <>
-        <span className="activity-widget__strong">Athelas</span> updated this claims status to ⚠️{' '}
-        <span className="activity-widget__strong">Initial Review Required</span> ⤵️{' '}
-        <span className="activity-widget__strong">Payer 1</span>
+        <span className="activity-widget__strong">United Medical Resources</span> remittance
+        received: <span className="activity-widget__strong">$0.00</span> paid (PI-252, CO-45)
       </>
     ),
   },
   {
-    id: '9',
-    adornment: { kind: 'initial', letter: 'V', tone: 'blue' },
+    id: 'status',
+    adornment: { kind: 'icon', src: propsBlock },
+    time: '2 days ago',
     body: (
       <>
-        <span className="activity-widget__strong">Victor Vang</span> edited this claim
+        Claim status set to <Pill icon={propsBlock}>Full Denials</Pill>
       </>
     ),
-    viewMore: true,
+  },
+  {
+    id: 'note-tameka',
+    time: '2 days ago',
+    note: {
+      initials: 'TJ',
+      tone: 'lilac',
+      name: 'Tameka Jeffery',
+      message: 'Payer says the medical record is missing, but it was attached on 9/25. Preparing a resubmission.',
+    },
+  },
+  {
+    id: 'note-tawsif',
+    time: '1 day ago',
+    note: {
+      initials: 'TK',
+      tone: 'navy',
+      name: 'Tawsif Kaisar',
+      message: 'Acknowledged. Thanks for the update.',
+    },
+  },
+  {
+    id: 'resubmission',
+    adornment: { kind: 'icon', src: appealInfo },
+    time: 'Today',
+    last: true,
+    body: (
+      <>
+        <span className="activity-widget__strong">Lorenza Ramirez</span> prepared a resubmission
+      </>
+    ),
     children: [
       {
-        id: '9a',
-        icon: activityPlus,
-        body: <>Additional Claim Information set to&nbsp;-</>,
-      },
-      {
-        id: '9b',
-        icon: activityMinus,
+        id: 'resubmission-check',
         body: (
           <>
-            Removed diagnosis codes: <span className="activity-widget__strong">M25.561</span>
-          </>
-        ),
-      },
-      {
-        id: '9c',
-        icon: activityPlus,
-        body: (
-          <>
-            Added diagnosis codes:&nbsp;
-            <span className="activity-widget__strong">M25.511</span>
+            <span className="activity-widget__strong">10/16/2026</span> clearinghouse check passed ·
+            not yet sent
           </>
         ),
       },
     ],
-  },
-  {
-    id: '10',
-    adornment: { kind: 'avatar', src: activityAthelas, alt: 'Athelas' },
-    body: (
-      <>
-        <span className="activity-widget__strong">Athelas</span> added procedure{' '}
-        <span className="activity-widget__strong">1234543</span>
-      </>
-    ),
-    viewMore: true,
-  },
-  {
-    id: '11',
-    adornment: { kind: 'initial', letter: 'V', tone: 'blue' },
-    body: (
-      <>
-        <span className="activity-widget__strong">Victor Vang</span> edited this claim
-      </>
-    ),
-    viewMore: true,
-  },
-  {
-    id: '12',
-    adornment: { kind: 'icon', src: activityCheck },
-    body: (
-      <>
-        Claim marked <span className="activity-widget__strong">ready to submit</span>
-      </>
-    ),
-  },
-  {
-    id: '13',
-    adornment: { kind: 'icon', src: activityBullseye },
-    body: (
-      <>
-        Claim marked <span className="activity-widget__strong">not ready to submit</span>
-      </>
-    ),
-    last: true,
   },
 ]
 
@@ -204,20 +165,20 @@ function AdornmentNode({ adornment }: { adornment: Adornment }) {
   )
 }
 
-function Meta({ viewMore }: { viewMore?: boolean }) {
+function Meta({ time, viewMore }: { time: string; viewMore?: boolean }) {
   return (
     <span className="activity-widget__meta">
       <span className="activity-widget__dot" aria-hidden>
         •
       </span>
-      <span>3 months ago</span>
+      <span>{time}</span>
       {viewMore ? (
         <>
           <span className="activity-widget__dot" aria-hidden>
             •
           </span>
           <button type="button" className="activity-widget__link">
-            View More
+            View more
           </button>
         </>
       ) : null}
@@ -225,8 +186,14 @@ function Meta({ viewMore }: { viewMore?: boolean }) {
   )
 }
 
-export function ActivityWidget({ hideHeader = false }: { hideHeader?: boolean }) {
-  const { open, contentId, toggle, collapsible } = useClaimWidgetOpen(true)
+export function ActivityWidget({
+  hideHeader = false,
+  defaultOpen = true,
+}: {
+  hideHeader?: boolean
+  defaultOpen?: boolean
+}) {
+  const { open, contentId, toggle, collapsible } = useClaimWidgetOpen(defaultOpen)
   const isOpen = !collapsible || open
   const showBody = hideHeader || isOpen
 
@@ -252,11 +219,6 @@ export function ActivityWidget({ hideHeader = false }: { hideHeader?: boolean })
             titleClassName="activity-widget__title"
             controlsId={contentId}
           />
-          <WidgetViewButtons
-            widgetId="activity"
-            title="Activity"
-            className="activity-widget__actions"
-          />
         </header>
       )}
 
@@ -273,30 +235,44 @@ export function ActivityWidget({ hideHeader = false }: { hideHeader?: boolean })
               }
             >
               <div className="activity-widget__rail" aria-hidden>
-                <AdornmentNode adornment={item.adornment} />
-                {!item.last ? <span className="activity-widget__connector" /> : null}
+                {item.adornment ? <AdornmentNode adornment={item.adornment} /> : null}
+                {!item.last ? (
+                  <span
+                    className={
+                      item.note
+                        ? 'activity-widget__connector activity-widget__connector--full'
+                        : 'activity-widget__connector'
+                    }
+                  />
+                ) : null}
               </div>
               <div className="activity-widget__content">
-                <p className="activity-widget__line">
-                  {item.body}
-                  <Meta viewMore={item.viewMore} />
-                </p>
+                {item.note ? (
+                  <div className="activity-widget__note">
+                    <span
+                      className={`activity-widget__avatar activity-widget__avatar--${item.note.tone}`}
+                      aria-hidden
+                    >
+                      {item.note.initials}
+                    </span>
+                    <div className="activity-widget__note-body">
+                      <p className="activity-widget__line">
+                        <span className="activity-widget__strong">{item.note.name}</span>
+                        <Meta time={item.time} />
+                      </p>
+                      <p className="activity-widget__note-message">{item.note.message}</p>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="activity-widget__line">
+                    {item.body}
+                    <Meta time={item.time} viewMore={item.viewMore} />
+                  </p>
+                )}
                 {item.children ? (
                   <ul className="activity-widget__children">
-                    {item.children.map((child, index) => (
-                      <li key={child.id} className="activity-widget__child">
-                        <div className="activity-widget__rail activity-widget__rail--child" aria-hidden>
-                          <img
-                            src={child.icon}
-                            alt=""
-                            width={16}
-                            height={16}
-                            className="activity-widget__icon"
-                          />
-                          {index < item.children!.length - 1 ? (
-                            <span className="activity-widget__connector" />
-                          ) : null}
-                        </div>
+                    {item.children.map((child) => (
+                      <li key={child.id} className="activity-widget__detail">
                         <p className="activity-widget__line activity-widget__line--child">{child.body}</p>
                       </li>
                     ))}

@@ -5,11 +5,10 @@ import {
   paymentsChevronRight,
   paymentsDangerous,
   paymentsFilter,
-  paymentsSchedule,
   submissionsSortDown,
   tune,
 } from '../assets/icons'
-import { WidgetViewButtons, useWidgetView } from './widgetView'
+import { WidgetViewButtons, recordIsOpen, useWidgetView } from './widgetView'
 import { ClaimWidgetTitle, useClaimWidgetOpen } from './ClaimWidgetCollapse'
 
 type PaymentsTab = 'perPayer' | 'adjudication'
@@ -28,71 +27,82 @@ type ProcedureLine = {
 
 /** Synthetic demo payments — not real PHI/PII. */
 const FINANCIALS = {
-  charges: '$110.00',
+  charges: '$205.00',
   paid: '-',
-  pr: '$110.00',
+  pr: '-',
   adj: '-',
-  balance: '$110.00',
+  balance: '$205.00',
 }
 
 const PROCEDURES: ProcedureLine[] = [
   {
-    procedure: '234567',
-    posted: '01/25/2026',
-    charges: 'N/A',
-    paid: 'N/A',
+    procedure: '97140',
+    posted: '10/14/2026',
+    charges: '$67.00',
+    paid: '$0.00',
     pr: '-',
     adj: '-',
-    writeOff: 'NEW YORK BLUE SHIELD OF ROCHESTER',
-    memberId: '234567e5',
+    writeOff: '-',
+    memberId: '17949634',
     type: 'Initial',
   },
   {
-    procedure: '234568',
-    posted: '01/25/2026',
-    charges: 'N/A',
-    paid: 'N/A',
+    procedure: '97530',
+    posted: '10/14/2026',
+    charges: '$70.00',
+    paid: '$0.00',
     pr: '-',
     adj: '-',
-    writeOff: 'NEW YORK BLUE SHIELD OF ROCHESTER',
-    memberId: '234567e5',
+    writeOff: '-',
+    memberId: '17949634',
+    type: 'Initial',
+  },
+  {
+    procedure: '97110',
+    posted: '10/14/2026',
+    charges: '$68.00',
+    paid: '$0.00',
+    pr: '-',
+    adj: '-',
+    writeOff: '-',
+    memberId: '17949634',
     type: 'Initial',
   },
 ]
 
 const DETAIL_FIELDS: { label: string; value: string }[] = [
   { label: 'Type', value: 'Remittance' },
-  { label: 'Insurance', value: 'United Healthcare Insurance Company' },
-  { label: 'Check Number', value: '25009B1000441986' },
-  { label: 'Check Date', value: '01-09-25' },
+  { label: 'Insurance', value: 'United Medical Resources' },
+  { label: 'Check Number', value: 'CE60205120213906278701523' },
+  { label: 'Check Date', value: '10-14-26' },
   { label: 'Source', value: '835 File Import' },
-  { label: 'Claim Status Code', value: '1' },
-  { label: 'Coins', value: '$10.87' },
+  { label: 'Claim Status Code', value: '4 - Denied' },
+  { label: 'Coins', value: '-' },
   { label: 'Deductible', value: '-' },
-  { label: 'Check #', value: '-' },
-  { label: 'Check Date', value: '09/15/25' },
-  { label: 'Remit Received', value: '09/15/25' },
-  { label: 'Remit Source', value: 'EOB Scan' },
+  { label: 'Check #', value: 'CE60205120213906278701523' },
+  { label: 'Check Date', value: '10/14/26' },
+  { label: 'Remit Received', value: '10/14/26' },
+  { label: 'Remit Source', value: '835' },
   { label: 'Posted By', value: 'Remit Posting Rule Engine' },
 ]
 
 const CARCS = [
   {
-    code: 'CO-109',
+    code: 'PI-252',
     description:
-      'Claim/service not covered by this payer/contractor. You must send the claim/service to the correct payer/contractor.',
+      'An attachment/other documentation is required to adjudicate this claim/service. At least one Remark Code must be provided (may be comprised of either the NCPDP Reject Reason Code, or Remittance Advice Remark Code that is not an ALERT).',
+  },
+  {
+    code: 'CO-45',
+    description:
+      'Charge exceeds fee schedule/maximum allowable or contracted/legislated fee arrangement.',
   },
 ]
 
 const RARCS = [
   {
-    code: 'N130',
-    description:
-      'Consult plan benefit documents/guidelines for information about restrictions for this service.',
-  },
-  {
-    code: 'N640',
-    description: 'Exceeds number/frequency approved/allowed within time period.',
+    code: 'M127',
+    description: 'Missing patient medical record for this service.',
   },
 ]
 
@@ -153,10 +163,9 @@ function DetailBlock() {
 }
 
 function PostingLedger() {
-  const { openSide } = useWidgetView()
+  const { view, openSide } = useWidgetView()
   const [openProcedures, setOpenProcedures] = useState<Record<string, boolean>>({
-    '234567': true,
-    '234568': true,
+    '97140': true,
   })
   const records = PROCEDURES.map((row) => row.procedure)
 
@@ -247,6 +256,7 @@ function PostingLedger() {
                   isOpen={isOpen}
                   onToggle={() => toggleProcedure(row.procedure)}
                   onOpenRecord={() => openRecord(row.procedure)}
+                  recordOpen={recordIsOpen(view, 'payments', row.procedure)}
                 />
               )
             })}
@@ -262,18 +272,25 @@ function ProcedureRows({
   isOpen,
   onToggle,
   onOpenRecord,
+  recordOpen,
 }: {
   row: ProcedureLine
   isOpen: boolean
   onToggle: () => void
   onOpenRecord: () => void
+  recordOpen: boolean
 }) {
   return (
     <>
       <tr
-        className="payments-widget__procedure-row widget-table-row"
+        className={
+          recordOpen
+            ? 'payments-widget__procedure-row widget-table-row widget-table-row--open'
+            : 'payments-widget__procedure-row widget-table-row'
+        }
         tabIndex={0}
         role="button"
+        aria-current={recordOpen ? 'true' : undefined}
         aria-label={`Open procedure ${row.procedure}`}
         onClick={onOpenRecord}
         onKeyDown={(event) => {
@@ -283,7 +300,7 @@ function ProcedureRows({
           }
         }}
       >
-        <td className="payments-widget__td">
+        <td className="payments-widget__td payments-widget__td--procedure">
           <div className="payments-widget__cell-start">
             <button
               type="button"
@@ -311,7 +328,7 @@ function ProcedureRows({
         <td className="payments-widget__td payments-widget__td--end">{row.pr}</td>
         <td className="payments-widget__td payments-widget__td--end">{row.adj}</td>
         <td className="payments-widget__td payments-widget__td--end payments-widget__td--truncate">
-          <span>{row.writeOff}</span>
+          <span title={row.writeOff}>{row.writeOff}</span>
         </td>
         <td className="payments-widget__td payments-widget__td--end">{row.memberId}</td>
         <td className="payments-widget__td">{row.type}</td>
@@ -330,12 +347,11 @@ function ProcedureRows({
 export function PaymentsWidget({ hideHeader = false }: { hideHeader?: boolean }) {
   const [tab, setTab] = useState<PaymentsTab>('perPayer')
   const [primaryOpen, setPrimaryOpen] = useState(true)
-  const [secondaryOpen, setSecondaryOpen] = useState(false)
-  const { openSide } = useWidgetView()
+  const { view, openSide } = useWidgetView()
   const { open, contentId, toggle, collapsible } = useClaimWidgetOpen()
   const isOpen = !collapsible || open
   const showBody = hideHeader || isOpen
-  const payerRecords = ['Primary', 'Secondary', 'Total']
+  const payerRecords = ['Primary', 'Total']
 
   function openPayer(label: string) {
     openSide('payments', 'Payments', label, payerRecords)
@@ -441,9 +457,14 @@ export function PaymentsWidget({ hideHeader = false }: { hideHeader?: boolean })
               </thead>
               <tbody>
                 <tr
-                  className="payments-widget__payer-row widget-table-row"
+                  className={
+                    recordIsOpen(view, 'payments', 'Primary')
+                      ? 'payments-widget__payer-row widget-table-row widget-table-row--open'
+                      : 'payments-widget__payer-row widget-table-row'
+                  }
                   tabIndex={0}
                   role="button"
+                  aria-current={recordIsOpen(view, 'payments', 'Primary') ? 'true' : undefined}
                   aria-label="Open Primary payer"
                   onClick={() => openPayer('Primary')}
                   onKeyDown={(event) => {
@@ -493,61 +514,14 @@ export function PaymentsWidget({ hideHeader = false }: { hideHeader?: boolean })
                 ) : null}
 
                 <tr
-                  className="payments-widget__payer-row widget-table-row"
+                  className={
+                    recordIsOpen(view, 'payments', 'Total')
+                      ? 'payments-widget__payer-row widget-table-row widget-table-row--open'
+                      : 'payments-widget__payer-row widget-table-row'
+                  }
                   tabIndex={0}
                   role="button"
-                  aria-label="Open Secondary payer"
-                  onClick={() => openPayer('Secondary')}
-                  onKeyDown={(event) => {
-                    if (event.key === 'Enter' || event.key === ' ') {
-                      event.preventDefault()
-                      openPayer('Secondary')
-                    }
-                  }}
-                >
-                  <td className="payments-widget__td">
-                    <div className="payments-widget__cell-start">
-                      <button
-                        type="button"
-                        className="payments-widget__expand"
-                        aria-expanded={secondaryOpen}
-                        aria-label={secondaryOpen ? 'Collapse Secondary' : 'Expand Secondary'}
-                        onClick={(event) => {
-                          event.stopPropagation()
-                          setSecondaryOpen((value) => !value)
-                        }}
-                      >
-                        <img
-                          src={secondaryOpen ? widgetArrowDown : paymentsChevronRight}
-                          alt=""
-                          width={12}
-                          height={12}
-                        />
-                      </button>
-                      <img src={paymentsSchedule} alt="" width={18} height={18} />
-                      <span className="payments-widget__payer-name">Secondary</span>
-                    </div>
-                  </td>
-                  <td className="payments-widget__td payments-widget__td--end">{FINANCIALS.charges}</td>
-                  <td className="payments-widget__td payments-widget__td--end">{FINANCIALS.paid}</td>
-                  <td className="payments-widget__td payments-widget__td--end">{FINANCIALS.pr}</td>
-                  <td className="payments-widget__td payments-widget__td--end">{FINANCIALS.adj}</td>
-                  <td className="payments-widget__td payments-widget__td--end payments-widget__td--strong">
-                    {FINANCIALS.balance}
-                  </td>
-                </tr>
-                {secondaryOpen ? (
-                  <tr className="payments-widget__payer-nested">
-                    <td colSpan={6}>
-                      <PostingLedger />
-                    </td>
-                  </tr>
-                ) : null}
-
-                <tr
-                  className="payments-widget__payer-row widget-table-row"
-                  tabIndex={0}
-                  role="button"
+                  aria-current={recordIsOpen(view, 'payments', 'Total') ? 'true' : undefined}
                   aria-label="Open Total payer"
                   onClick={() => openPayer('Total')}
                   onKeyDown={(event) => {

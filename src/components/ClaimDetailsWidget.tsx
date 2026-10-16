@@ -3,55 +3,55 @@ import { submissionsPaid, touchApp } from '../assets/icons'
 import { ClaimWidgetTitle, useClaimWidgetOpen } from './ClaimWidgetCollapse'
 import { WidgetViewButtons } from './widgetView'
 
-/** Synthetic demo field values from Figma — not real PHI/PII. */
+/** Synthetic demo field values — not real PHI/PII. */
 const details = {
-  patient: 'Joshua Massicot',
-  dateOfService: '09/01/2026',
-  insurances: 'Wc-wegmans',
-  providers: 'Timothy Bucklaew, Conor Kelly',
-  diagnoses: 'M25.561, M25.562, M54.50, M25.511, M25.512, M54.2, M54.16',
-  procedures: '97110, 97112, 97530, L3923, L3921, L3919, L3913, L3906, L3808',
-  facility: 'Lattimore Pt Of Brownstone Newark',
-  admissionType: 'Emergency',
-  dischargeStatus: 'Discharged to home or self-care (routine discharge)',
-  dischargeAt: '09/02/2026 20:23',
-  typeOfCare: 'Independant part A',
-  admissionSource: 'Non-Health Care Facility Point of Origin (Physician Referral)',
-  admissionDate: '09/02/2026 12:30',
-  currentIllnessDate: '09/02/2026 20:23',
-  additionalInfo: 'Notes',
-  initialTreatmentDate: '09/02/2026 20:23',
+  patient: 'Cole Crawford',
+  dateOfService: '09/25/2026',
+  insurances: 'United Medical Resources',
+  providers: 'Nicholas Grimoskas, Alan Barrett, John John',
+  diagnoses: 'M54.50, M62.81, R26.2',
+  procedures: '97110, 97140, 97530',
+  facility: 'Rock Valley Physical Therapy',
+  admissionType: '—',
+  dischargeStatus: '—',
+  dischargeAt: '—',
+  typeOfCare: 'Outpatient Therapy',
+  admissionSource: '—',
+  admissionDate: '—',
+  currentIllnessDate: '09/18/2026',
+  additionalInfo: '—',
+  initialTreatmentDate: '09/18/2026',
 }
 
-/** Synthetic patient hover card — Figma Claims 9024:126837. */
+/** Synthetic patient hover card — not real PHI/PII. */
 const patientInfo = {
-  name: 'Joshua Massicot',
-  patientId: '23050634',
-  dateOfBirth: '01/25/1982',
-  age: '44',
+  name: 'Cole Crawford',
+  patientId: '29126',
+  dateOfBirth: '04/02/2012',
+  age: '14',
   gender: 'Male',
-  site: 'Site Name',
-  address: '391 BENTON ST, NY. 14620',
+  site: 'Clive, IA',
+  address: '16691 BOSTON PKWY, Clive, IA 50325-4669',
 }
 
-/** Synthetic insurance hover card — Figma Claims 9024:125533. */
+/** Synthetic insurance hover card — not real PHI/PII. */
 const insuranceInfo = {
-  payerName: 'Wc-wegmans',
-  payerId: 'J3845',
+  payerName: 'United Medical Resources',
+  payerId: '39026',
   clearingHouse: 'Waystar',
-  remainingVisits: '-',
-  planStart: '01/19/2026',
-  planEnd: '-',
-  lastRun: '04/09/2026',
-  ranBy: 'Myles Baumann',
-  memberId: 'WC2025155829',
-  relationship: 'Self',
+  remainingVisits: '—',
+  planStart: '01/01/2026',
+  planEnd: '—',
+  lastRun: '09/25/2026',
+  ranBy: 'Normandy Caller',
+  memberId: '17949634',
+  relationship: 'Child',
   serviceType: 'Physical Therapy',
-  groupNumber: 'G4036288',
-  companyType: 'Workers Compensation',
-  gender: 'Female',
-  groupName: '-',
-  provider: 'LATTIMORE PHYSICAL THERAPY',
+  groupNumber: '76412766',
+  companyType: 'Commercial',
+  gender: '—',
+  groupName: '—',
+  provider: 'Rock Valley Physical Therapy',
 }
 
 type FieldProps = {
@@ -272,8 +272,14 @@ function InsurancesField({ value }: { value: string }) {
   )
 }
 
-export function ClaimDetailsWidget({ hideHeader = false }: { hideHeader?: boolean }) {
-  const { open, contentId, toggle, collapsible } = useClaimWidgetOpen()
+export function ClaimDetailsWidget({
+  hideHeader = false,
+  defaultOpen = false,
+}: {
+  hideHeader?: boolean
+  defaultOpen?: boolean
+}) {
+  const { open, contentId, toggle, collapsible } = useClaimWidgetOpen(defaultOpen)
   const isOpen = !collapsible || open
   const showBody = hideHeader || isOpen
 

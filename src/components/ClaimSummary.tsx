@@ -1,11 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import {
+  aiGroup1,
+  aiGroup2,
   checkCircle,
   keyboardArrowDown,
   paymentsChevronRight,
-  restartAlt,
-  summarySparkleA,
-  summarySparkleB,
   thumbDown,
   thumbUp,
 } from '../assets/icons'
@@ -15,40 +14,39 @@ import { AppealPackageModal } from './AppealPackageModal'
 /** Synthetic demo suggestion copy — not real PHI/PII. */
 const SUGGESTIONS = [
   {
-    id: 'review-dx',
-    actionLabel: 'Review principal diagnosis',
-    title: 'Review Principal Diagnosis',
+    id: 'send-resubmission',
+    actionLabel: 'Send prepared resubmission',
+    title: 'Send Prepared Resubmission',
     reason:
-      'The claim was denied for an invalid or missing principal diagnosis (CARC 167, RARC MA63). CPT 97110 is billed with M54.2, F07.81, M54.6, and M54.50. Confirm which diagnosis is principal from the visit documentation.',
+      'United Medical Resources denied 97110 and 97530 under PI-252 with remark M127 (missing patient medical record). A medical record was already attached on September 25, 2026, and the prepared resubmission passed the clearinghouse check on October 16, 2026.',
     reasonMore:
-      'Match the principal diagnosis to the documented reason for the encounter, then resubmit to WC-OWCP.',
+      'Sending it with the attached record directly addresses the documentation denial.',
     changes: [
-      { label: 'Principal DX', value: 'Unspecified → confirmed from note' },
-      { label: 'Denial', value: 'CARC 167 / RARC MA63' },
+      { label: 'Submission', value: 'Resubmission · ready to send' },
+      { label: 'Denial', value: 'PI-252 / RARC M127' },
     ],
     moreChanges: [
-      { label: 'Chart note', value: 'Identify reason for visit' },
-      { label: 'Payer', value: 'WC-OWCP / U.S. DOL' },
+      { label: 'Attachment', value: 'Medical record (09/25/2026)' },
+      { label: 'Payer', value: 'United Medical Resources' },
     ],
-    sourceLink: 'Visit documentation',
+    sourceLink: 'Remittance 10/14/2026',
   },
   {
-    id: 'update-seq',
-    actionLabel: 'Update diagnosis sequencing',
-    title: 'Update Diagnosis Sequencing',
+    id: 'review-fee-schedule',
+    actionLabel: 'Review CO-45 adjustments',
+    title: 'Review CO-45 Adjustments',
     reason:
-      'Diagnosis order and procedure linkage may not identify a valid principal diagnosis for CPT 97110. Re-sequence M54.2, F07.81, M54.6, and M54.50 so the principal diagnosis leads the claim.',
+      'CO-45 (charge exceeds fee schedule) was applied to the 97110 and 97140 lines. Confirm the billed amounts against the United Medical Resources contracted rates before resubmitting.',
     reasonMore:
-      'Link 97110 to the corrected principal diagnosis, then resubmit to WC-OWCP.',
+      'CO-45 is a contractual adjustment and is not billable to the patient.',
     changes: [
-      { label: 'DX sequence', value: 'M54.2, F07.81, M54.6, M54.50' },
-      { label: 'Linkage', value: '97110 → principal DX' },
+      { label: 'Lines', value: '97110, 97140' },
+      { label: 'Adjustment', value: 'CO-45 · $220.00' },
     ],
     moreChanges: [
-      { label: 'Principal DX', value: 'Move valid DX to position 1' },
-      { label: 'Units', value: '97110 ×3 unchanged' },
+      { label: 'Patient responsibility', value: '$0.00' },
     ],
-    sourceLink: 'Claim diagnosis pointer',
+    sourceLink: 'Fee schedule',
   },
 ] as const
 
@@ -72,15 +70,6 @@ function Icon({
       height={size}
       draggable={false}
     />
-  )
-}
-
-function SummaryEmblem() {
-  return (
-    <span className="summary-emblem" aria-hidden>
-      <img src={summarySparkleA} alt="" width={11} height={20} className="summary-emblem__a" />
-      <img src={summarySparkleB} alt="" width={20} height={11} className="summary-emblem__b" />
-    </span>
   )
 }
 
@@ -224,62 +213,97 @@ function SuggestedActionHover({ suggestion }: { suggestion: Suggestion }) {
   )
 }
 
-export function ClaimSummary() {
-  const { open, contentId, toggle, collapsible } = useClaimWidgetOpen(true, {
+export function ClaimSummary({
+  title = 'Claim Summary',
+  hideToggle = false,
+  defaultOpen = true,
+}: {
+  title?: string
+  /** Option 2 moves open/close to the page action bar. */
+  hideToggle?: boolean
+  defaultOpen?: boolean
+}) {
+  const { open, contentId, toggle, collapsible } = useClaimWidgetOpen(defaultOpen, {
     excludeFromCollapseAll: true,
   })
   const [appealOpen, setAppealOpen] = useState(false)
-  const isOpen = !collapsible || open
+  const showToggle = collapsible && !hideToggle
+  const isOpen = !showToggle || open
 
   return (
     <section
       className={isOpen ? 'claim-summary' : 'claim-summary claim-widget--collapsed'}
       aria-labelledby="claim-summary-title"
     >
-      <div className="claim-summary__inner">
-        <header className="claim-summary__header">
-          <ClaimWidgetTitle
-            collapsible={collapsible}
-            open={open}
-            onToggle={toggle}
-            title="Claim Summary"
-            titleId="claim-summary-title"
-            titleClassName="claim-summary__title"
-            controlsId={contentId}
-            leading={<SummaryEmblem />}
-          />
-          <div className="claim-summary__feedback">
-            <button type="button" className="icon-btn" aria-label="Good response" title="Good Response">
-              <Icon src={thumbUp} size={20} />
-            </button>
-            <button type="button" className="icon-btn" aria-label="Bad response" title="Bad Response">
-              <Icon src={thumbDown} size={20} />
-            </button>
-            <div className="claim-summary__feedback-divider" aria-hidden />
-            <button type="button" className="icon-btn" aria-label="Regenerate summary" title="Regenerate">
-              <Icon src={restartAlt} size={20} />
-            </button>
+      <header className="claim-summary__header">
+        <ClaimWidgetTitle
+          collapsible={showToggle}
+          open={open}
+          onToggle={toggle}
+          title={title}
+          titleId="claim-summary-title"
+          titleClassName="claim-summary__title"
+          controlsId={contentId}
+        />
+        <button
+          type="button"
+          className="ai-tab claim-summary__ask"
+          aria-label="Ask Athelas AI"
+          title="Ask Athelas AI"
+        >
+          <span className="ai-mark" aria-hidden>
+            <img src={aiGroup1} alt="" width={11} height={20} className="ai-mark__a" />
+            <img src={aiGroup2} alt="" width={20} height={11} className="ai-mark__b" />
+          </span>
+          <span className="claim-summary__ask-label">Ask Athelas AI</span>
+        </button>
+      </header>
+
+      {isOpen ? (
+        <div id={contentId} className="claim-summary__content">
+          <div className="claim-summary__details">
+            <div className="claim-summary__section">
+              <p className="claim-summary__section-title">Where things stand</p>
+              <p className="claim-summary__body">
+                This claim was <span className="claim-summary__error">fully denied</span>. Rock
+                Valley Physical Therapy and Therapy Services billed United Medical Resources $205.00
+                for three therapy procedures on September 25, 2026, and{' '}
+                <span className="claim-summary__link" role="link" tabIndex={0}>
+                  the initial claim sent on September 26, 2026
+                </span>{' '}
+                came back with a full denial.{' '}
+                <span className="claim-summary__link" role="link" tabIndex={0}>
+                  United Medical Resources&apos; remittance dated October 14, 2026
+                </span>{' '}
+                denied the 97110 and 97530 lines under PI-252 (documentation required) with remark
+                M127 (missing patient medical record), and applied CO-45 (charge exceeds fee
+                schedule) to the 97110 and 97140 lines. Nothing has been paid. Lorenza Ramirez has
+                since prepared a resubmission that passed the clearinghouse check on October 16,
+                2026, but it has not yet been sent.
+              </p>
+            </div>
+            <div className="claim-summary__section">
+              <p className="claim-summary__section-title">What to do next</p>
+              <p className="claim-summary__body">
+                Send the prepared resubmission to United Medical Resources. The denial was driven by
+                PI-252 with remark M127 — the payer said the patient medical record was missing —
+                but a medical record was already attached to the claim on September 25, 2026. The
+                resubmission has cleared the clearinghouse check and is ready to go out; submitting
+                it with the attached record directly addresses the documentation denial on the
+                97110 and 97530 lines.
+              </p>
+            </div>
+            <div className="claim-summary__feedback">
+              <button type="button" className="icon-btn" aria-label="Good response" title="Good Response">
+                <Icon src={thumbUp} size={20} />
+              </button>
+              <button type="button" className="icon-btn" aria-label="Bad response" title="Bad Response">
+                <Icon src={thumbDown} size={20} />
+              </button>
+            </div>
           </div>
-        </header>
 
-        {isOpen ? (
-          <div id={contentId} className="claim-widget__body">
-            <p className="claim-summary__body">
-              This $91.59 workers&apos; comp claim for{' '}
-              <button type="button" className="claim-summary__link">
-                DOS 08/17/2026
-              </button>{' '}
-              was <span className="claim-summary__error">fully denied</span> by WC-OWCP / U.S.
-              Department of Labor for an invalid or missing principal diagnosis (CARC 167, RARC
-              MA63).{' '}
-              <button type="button" className="claim-summary__link">
-                CPT 97110
-              </button>{' '}
-              was billed for 3 units with diagnoses including M54.2, F07.81, M54.6, and M54.50.
-            </p>
-
-            <div className="claim-summary__divider" aria-hidden />
-
+          <div className="claim-summary__suggested">
             <p className="claim-summary__actions-label">Suggested Actions</p>
 
             <div className="claim-summary__actions">
@@ -298,8 +322,8 @@ export function ClaimSummary() {
               </button>
             </div>
           </div>
-        ) : null}
-      </div>
+        </div>
+      ) : null}
       {appealOpen ? <AppealPackageModal onClose={() => setAppealOpen(false)} /> : null}
     </section>
   )
