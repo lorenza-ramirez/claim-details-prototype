@@ -1050,6 +1050,7 @@ function ClaimDetailsPageInner({
         {renderSplitPanel()}
         {summaryVisible ? (
           <ClaimV2Aside
+            status={claim.status}
             width={summaryWidth}
             onWidthChange={setSummaryWidth}
           />

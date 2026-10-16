@@ -25,6 +25,7 @@ import { PaymentsWidget } from './PaymentsWidget'
 import { RemittancesWidget } from './RemittancesWidget'
 import { ResizeHandle } from './ResizeHandle'
 import { ReviewWidget } from './ReviewWidget'
+import { StatusReasonWidget } from './StatusReasonWidget'
 import { SubmissionsWidget } from './SubmissionsWidget'
 
 export type V2TabId =
@@ -505,9 +506,11 @@ export const SUMMARY_MAX_WIDTH = 720
 export const SUMMARY_DEFAULT_WIDTH = 320
 
 export function ClaimV2Aside({
+  status,
   width = SUMMARY_DEFAULT_WIDTH,
   onWidthChange,
 }: {
+  status: string
   width?: number
   onWidthChange?: (width: number) => void
 }) {
@@ -537,6 +540,7 @@ export function ClaimV2Aside({
         <div className="review-widget-wrap">
           <ReviewWidget />
         </div>
+        <StatusReasonWidget status={status} defaultOpen={false} />
         <ActivityWidget defaultOpen={false} />
       </div>
     </aside>
