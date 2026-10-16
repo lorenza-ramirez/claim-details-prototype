@@ -20,6 +20,7 @@ export const STATUS_CLAIM_TYPE: Record<string, ClaimType> = {
   'Partial Denial': 'denials',
   Rejected: 'denials',
   Pending: 'initial-review',
+  'Initial review needed': 'initial-review',
   Draft: 'initial-review',
   Submitted: 'ar-follow-up',
   Paid: 'ar-follow-up',

@@ -6,7 +6,7 @@ export type ClaimQueueItem = {
 }
 
 export const CLAIM_QUEUE: ClaimQueueItem[] = [
-  { id: '22316715', status: 'Pending' },
+  { id: '22316715', status: 'Initial review needed' },
   { id: '22316728', status: 'Draft' },
   { id: '22316691', status: 'Full Denials' },
   { id: '22316702', status: 'Partial Denial' },

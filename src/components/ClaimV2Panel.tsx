@@ -533,7 +533,7 @@ export function ClaimV2Aside({
         />
       ) : null}
       <div className="claim-v2-aside__scroll claim-cards">
-        <ClaimSummary defaultOpen={false} />
+        <ClaimSummary defaultOpen />
         <div className="review-widget-wrap">
           <ReviewWidget />
         </div>

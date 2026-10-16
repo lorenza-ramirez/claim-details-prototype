@@ -2123,16 +2123,9 @@ img {
   position: absolute;
   top: 0;
   bottom: 0;
+  left: 0;
   width: 50%;
   background: currentColor;
-}
-
-.claim-v2__tab-pane--left::after {
-  left: 0;
-}
-
-.claim-v2__tab-pane--right::after {
-  right: 0;
 }
 
 .claim-v2__tab-beside {
@@ -9206,6 +9199,7 @@ button.claim-details-widget__value {
   width: 100%;
   max-width: 1000px;
   box-sizing: border-box;
+  container: review / inline-size;
   padding: 0;
   background: #ffffff;
   border: 1px solid var(--outline);
@@ -9325,6 +9319,53 @@ button.claim-details-widget__value {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* Narrow summary column: stack the action under the copy so nothing truncates. */
+@container review (max-width: 520px) {
+  .review-banner {
+    display: grid;
+    grid-template-columns: 22px minmax(0, 1fr);
+    column-gap: 8px;
+    row-gap: 12px;
+    align-items: start;
+  }
+
+  .review-banner > .icon {
+    grid-column: 1;
+    grid-row: 1;
+    margin-top: 1px;
+  }
+
+  .review-banner__copy {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .review-banner > .review-btn {
+    grid-column: 2;
+    grid-row: 2;
+    justify-self: start;
+    width: fit-content;
+    max-width: 100%;
+  }
+
+  .review-banner__title,
+  .review-banner__desc {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: unset;
+  }
+
+  .review-panel__header {
+    flex-wrap: wrap;
+    align-items: flex-start;
+    row-gap: 12px;
+  }
+
+  .review-panel__header .review-banner__copy {
+    flex: 1 1 100%;
+  }
 }
 
 .review-progress-bar {
