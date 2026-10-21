@@ -9,7 +9,7 @@ import {
   viewPreview,
 } from '../assets/icons'
 import { Badge, Field, FieldCol, FieldGrid, InfoBlock } from './ClaimDetailsSplitContent'
-import { SUBMISSION_ROWS, type SubmissionStatusKind } from './submissionsData'
+import { SUBMISSION_ROWS, type SubmissionRow, type SubmissionStatusKind } from './submissionsData'
 
 const STATUS_ICON: Record<SubmissionStatusKind, string> = {
   error: submissionsError,
@@ -72,8 +72,14 @@ function DetailSection({
 }
 
 /** Synthetic demo submission content — not real PHI/PII. */
-export function SubmissionDetail({ recordIndex }: { recordIndex: number }) {
-  const row = SUBMISSION_ROWS[recordIndex] ?? SUBMISSION_ROWS[0]
+export function SubmissionDetail({
+  recordIndex,
+  row: rowOverride,
+}: {
+  recordIndex: number
+  row?: SubmissionRow
+}) {
+  const row = rowOverride ?? SUBMISSION_ROWS[recordIndex] ?? SUBMISSION_ROWS[0]
   const [open, setOpen] = useState({ patient: true, insurances: true, providers: true })
 
   function toggle(key: keyof typeof open) {

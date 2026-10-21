@@ -6,7 +6,7 @@ import {
   remittancePdf,
   submissionsPaid,
 } from '../assets/icons'
-import { REMITTANCE_ROWS } from './remittancesData'
+import { REMITTANCE_ROWS, type RemittanceRow } from './remittancesData'
 
 type Adjustment = { code: string; amount: string }
 
@@ -132,8 +132,16 @@ function CodeDetails({
   )
 }
 
-export function RemittanceDetail({ recordIndex }: { recordIndex: number }) {
-  const row = REMITTANCE_ROWS[recordIndex] ?? REMITTANCE_ROWS[0]
+export function RemittanceDetail({
+  recordIndex,
+  row: rowOverride,
+  paidBy = 'UMR',
+}: {
+  recordIndex: number
+  row?: RemittanceRow
+  paidBy?: string
+}) {
+  const row = rowOverride ?? REMITTANCE_ROWS[recordIndex] ?? REMITTANCE_ROWS[0]
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({})
 
   function toggleLine(code: string) {
@@ -196,7 +204,7 @@ export function RemittanceDetail({ recordIndex }: { recordIndex: number }) {
               </span>
             </MetaItem>
           </div>
-          <MetaItem label="Paid By">UMR</MetaItem>
+          <MetaItem label="Paid By">{paidBy}</MetaItem>
           <MetaItem label="Source">{row.sourceLabel}</MetaItem>
           <MetaItem label="Imported Date">{row.importedDate}</MetaItem>
         </div>

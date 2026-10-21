@@ -172,7 +172,7 @@ function SidebarGroup({
   )
 }
 
-function Sidebar({ collapsed }: { collapsed: boolean }) {
+export function Sidebar({ collapsed }: { collapsed: boolean }) {
   return (
     <aside
       className={collapsed ? 'sidebar sidebar--collapsed' : 'sidebar'}
@@ -241,7 +241,7 @@ function Sidebar({ collapsed }: { collapsed: boolean }) {
   )
 }
 
-function GlobalHeader({
+export function GlobalHeader({
   sidebarCollapsed,
   onToggleSidebar,
 }: {
@@ -596,6 +596,100 @@ function PatientHoverLink({ children }: { children: ReactNode }) {
 }
 
 /** Synthetic demo property values from Figma — not real PHI/PII. */
+export function PropertiesBody({
+  status,
+  className = 'properties-panel__body',
+}: {
+  status: string
+  className?: string
+}) {
+  return (
+    <div className={className}>
+      <div className="properties-field">
+        <span className="properties-field__label">Status</span>
+        <div className="properties-tags">
+          {claimTypeForStatus(status) === 'denials' ? (
+            <span className="properties-badge properties-badge--icon properties-badge--strong">
+              <img src={propsBlock} alt="" width={16} height={16} />
+              {status}
+            </span>
+          ) : (
+            <span className="properties-badge properties-badge--strong">{status}</span>
+          )}
+          <span className="properties-badge properties-badge--strong">3d</span>
+        </div>
+      </div>
+      <div className="properties-field">
+        <span className="properties-field__label">Stage</span>
+        <span className="properties-badge properties-badge--icon properties-badge--stage">
+          <img src={propsStageProgress} alt="" width={16} height={16} />
+          Payer 1
+        </span>
+      </div>
+      <div className="properties-field properties-field--compact">
+        <span className="properties-field__label">Patient</span>
+        <PatientHoverLink>Cole Crawford, 14</PatientHoverLink>
+      </div>
+      <div className="properties-field properties-field--compact">
+        <span className="properties-field__label">Provider</span>
+        <span className="properties-field__value">Nicholas Grimoskas</span>
+      </div>
+      <div className="properties-field properties-field--compact">
+        <span className="properties-field__label">Date of Service</span>
+        <span className="properties-field__value">Sep 25, 2026</span>
+      </div>
+      <div className="properties-field">
+        <span className="properties-field__label">Assignee</span>
+        <button
+          type="button"
+          className="properties-avatar properties-avatar--assignee"
+          aria-label="Assignee: TB"
+          title="TB"
+        >
+          TB
+        </button>
+      </div>
+      <div className="properties-field">
+        <span className="properties-field__label">Tags</span>
+        <button type="button" className="icon-btn icon-btn--outlined" aria-label="Add tag" title="Add tag">
+          <img src={propsTagAdd} alt="" width={18} height={18} />
+        </button>
+      </div>
+      <div className="properties-field">
+        <span className="properties-field__label">Insurance</span>
+        <span className="properties-badge properties-badge--icon properties-badge--truncate">
+          <img src={submissionsPaid} alt="" width={16} height={16} />
+          <span className="properties-badge__text">UNITED MEDICAL RESOURCES</span>
+        </span>
+      </div>
+      <div className="properties-field">
+        <span className="properties-field__label">Submitted Insurance</span>
+        <span className="properties-badge properties-badge--truncate">
+          <span className="properties-badge__text">UNITED MEDICAL RESOURCES</span>
+        </span>
+      </div>
+
+      <div className="properties-divider" aria-hidden />
+
+      <div className="properties-field">
+        <span className="properties-field__label">EHR Import Status</span>
+        <span className="properties-badge properties-badge--icon">
+          <img src={propsSyncDisabled} alt="" width={16} height={16} />
+          Disabled
+        </span>
+      </div>
+      <div className="properties-field properties-field--compact">
+        <span className="properties-field__label">Last Updated</span>
+        <span className="properties-field__value">Today at 11:28 AM</span>
+      </div>
+      <div className="properties-field properties-field--compact">
+        <span className="properties-field__label">EHR Claim ID</span>
+        <span className="properties-field__value">-</span>
+      </div>
+    </div>
+  )
+}
+
 function PropertiesPanel({
   collapsed,
   onToggle,
@@ -664,89 +758,7 @@ function PropertiesPanel({
           <Icon src={leftPanelClose} size={18} />
         </button>
       </div>
-      <div className="properties-panel__body">
-        <div className="properties-field">
-          <span className="properties-field__label">Status</span>
-          <div className="properties-tags">
-            {claimTypeForStatus(status) === 'denials' ? (
-              <span className="properties-badge properties-badge--icon properties-badge--strong">
-                <img src={propsBlock} alt="" width={16} height={16} />
-                {status}
-              </span>
-            ) : (
-              <span className="properties-badge properties-badge--strong">{status}</span>
-            )}
-            <span className="properties-badge properties-badge--strong">3d</span>
-          </div>
-        </div>
-        <div className="properties-field">
-          <span className="properties-field__label">Stage</span>
-          <span className="properties-badge properties-badge--icon properties-badge--stage">
-            <img src={propsStageProgress} alt="" width={16} height={16} />
-            Payer 1
-          </span>
-        </div>
-        <div className="properties-field properties-field--compact">
-          <span className="properties-field__label">Patient</span>
-          <PatientHoverLink>Cole Crawford, 14</PatientHoverLink>
-        </div>
-        <div className="properties-field properties-field--compact">
-          <span className="properties-field__label">Provider</span>
-          <span className="properties-field__value">Nicholas Grimoskas</span>
-        </div>
-        <div className="properties-field properties-field--compact">
-          <span className="properties-field__label">Date of Service</span>
-          <span className="properties-field__value">Sep 25, 2026</span>
-        </div>
-        <div className="properties-field">
-          <span className="properties-field__label">Assignee</span>
-          <button
-            type="button"
-            className="properties-avatar properties-avatar--assignee"
-            aria-label="Assignee: TB"
-            title="TB"
-          >
-            TB
-          </button>
-        </div>
-        <div className="properties-field">
-          <span className="properties-field__label">Tags</span>
-          <button type="button" className="icon-btn icon-btn--outlined" aria-label="Add tag" title="Add tag">
-            <img src={propsTagAdd} alt="" width={18} height={18} />
-          </button>
-        </div>
-        <div className="properties-field">
-          <span className="properties-field__label">Insurance</span>
-          <span className="properties-badge properties-badge--icon properties-badge--truncate">
-            <img src={submissionsPaid} alt="" width={16} height={16} />
-            <span className="properties-badge__text">UNITED MEDICAL RESOURCES</span>
-          </span>
-        </div>
-        <div className="properties-field">
-          <span className="properties-field__label">Submitted Insurance</span>
-          <span className="properties-badge properties-badge--truncate">
-            <span className="properties-badge__text">UNITED MEDICAL RESOURCES</span>
-          </span>
-        </div>
-
-        <div className="properties-divider" aria-hidden />
-
-        <div className="properties-field">
-          <span className="properties-field__label">EHR Import Status</span>
-          <span className="properties-badge properties-badge--icon">
-            <img src={propsSyncDisabled} alt="" width={16} height={16} />
-            Disabled
-          </span>
-        </div>
-        <div className="properties-field properties-field--compact">
-          <span className="properties-field__label">Last Updated</span>
-          <span className="properties-field__value">Today at 11:28 AM</span>
-        </div>
-        <div className="properties-field properties-field--compact">
-          <span className="properties-field__label">EHR Claim ID</span>
-          <span className="properties-field__value">-</span>
-        </div>
-      </div>
+      <PropertiesBody status={status} />
     </aside>
   )
 }

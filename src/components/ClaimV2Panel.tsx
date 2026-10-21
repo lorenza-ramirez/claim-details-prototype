@@ -4,6 +4,7 @@ import type {
   DragEvent,
   KeyboardEvent as ReactKeyboardEvent,
   PointerEvent as ReactPointerEvent,
+  ReactNode,
   RefObject,
 } from 'react'
 import appealClose from '../assets/figma/appeal-close.svg'
@@ -85,12 +86,14 @@ export function ClaimV2Panel({
   onTabOrderChange,
   showSplitHint,
   onDismissSplitHint,
+  tabActions,
 }: {
   split: ClaimSplitView
   tabOrder: readonly V2TabId[]
   onTabOrderChange: (order: V2TabId[]) => void
   showSplitHint: boolean
   onDismissSplitHint: () => void
+  tabActions?: ReactNode
 }) {
   const { state, isSplit, openTab, openBeside, closePane, setRatio } = split
   const focusedTab = state[state.focused] ?? state.left
@@ -261,6 +264,7 @@ export function ClaimV2Panel({
             )
           })}
         </div>
+        {tabActions ? <div className="claim-v2__tab-actions">{tabActions}</div> : null}
       </div>
 
       {!isSplit && showSplitHint ? (

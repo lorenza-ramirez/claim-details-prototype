@@ -50,3 +50,19 @@ export function remittanceRecordLabel(row: RemittanceRow) {
 }
 
 export const REMITTANCE_RECORDS = REMITTANCE_ROWS.map(remittanceRecordLabel)
+
+/** October 14 Iowa Blue Shield remittance from the vision summary. Not part of the remittances table. */
+export const IOWA_BLUE_SHIELD_REMITTANCE: RemittanceRow = {
+  checkNumber: 'IBS20261014001',
+  checkDate: '10/14/2026',
+  insPaid: '$0.00',
+  prAmount: '$0.00',
+  otherPr: '$0.00',
+  status: 'Posted',
+  depositVerified: 'N/A',
+  sentTo: 'Iowa Blue Shield',
+  memberId: 'IBS10001',
+  source: '835',
+  sourceLabel: 'WAYSTAR',
+  importedDate: '10/14/2026',
+}
