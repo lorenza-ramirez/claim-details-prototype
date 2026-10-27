@@ -244,9 +244,11 @@ export function Sidebar({ collapsed }: { collapsed: boolean }) {
 export function GlobalHeader({
   sidebarCollapsed,
   onToggleSidebar,
+  current,
 }: {
   sidebarCollapsed: boolean
   onToggleSidebar: () => void
+  current?: string
 }) {
   return (
     <header className="global-header">
@@ -260,7 +262,17 @@ export function GlobalHeader({
         >
           <Icon src={dockToRight} size={16} />
         </button>
-        <span className="global-header__crumb">Claims</span>
+        <span className={current ? 'global-header__crumb global-header__crumb--trail' : 'global-header__crumb'}>
+          Claims
+        </span>
+        {current ? (
+          <>
+            <span className="global-header__sep" aria-hidden>
+              /
+            </span>
+            <span className="global-header__current">{current}</span>
+          </>
+        ) : null}
       </div>
 
       <div className="global-header__center">

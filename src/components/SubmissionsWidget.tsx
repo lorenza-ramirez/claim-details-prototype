@@ -20,15 +20,35 @@ const STATUS_ICON: Record<StatusKind, string> = {
   denied: submissionsRejected,
 }
 
-export function SubmissionsWidget({ hideHeader = false }: { hideHeader?: boolean }) {
+export function SubmissionsWidget({
+  hideHeader = false,
+  onOpenRecord,
+  sortOn = 'id',
+  sortDescending = false,
+  selectable = false,
+}: {
+  hideHeader?: boolean
+  /** When set, a row opens this handler instead of the shared side drawer. */
+  onOpenRecord?: (index: number) => void
+  sortOn?: 'id' | 'submitted'
+  sortDescending?: boolean
+  selectable?: boolean
+}) {
   const [appealOpen, setAppealOpen] = useState(false)
+  const [selected, setSelected] = useState<Record<number, boolean>>({})
   const { view, openSide } = useWidgetView()
   const { open, contentId, toggle, collapsible } = useClaimWidgetOpen()
   const isOpen = !collapsible || open
   const showBody = hideHeader || isOpen
   const records = SUBMISSION_RECORDS
+  const ordered = ROWS.map((row, index) => ({ row, index }))
+  if (sortDescending) ordered.reverse()
 
   function openRecord(index: number) {
+    if (onOpenRecord) {
+      onOpenRecord(index)
+      return
+    }
     openSide('submissions', 'Submissions', records[index], records)
   }
 
@@ -67,9 +87,20 @@ export function SubmissionsWidget({ hideHeader = false }: { hideHeader?: boolean
         <table className="submissions-widget__table">
           <thead>
             <tr>
+              {selectable ? (
+                <th className="submissions-widget__th submissions-widget__th--select" scope="col">
+                  <span className="visually-hidden">Select</span>
+                </th>
+              ) : null}
               <th className="submissions-widget__th submissions-widget__th--id" scope="col">
-                <span>ID</span>
-                <img src={submissionsSortDown} alt="" width={16} height={16} />
+                {sortOn === 'id' ? (
+                  <>
+                    <span>ID</span>
+                    <img src={submissionsSortDown} alt="" width={16} height={16} />
+                  </>
+                ) : (
+                  'ID'
+                )}
               </th>
               <th
                 className="submissions-widget__th submissions-widget__th--created submissions-widget__th--end"
@@ -81,6 +112,9 @@ export function SubmissionsWidget({ hideHeader = false }: { hideHeader?: boolean
                 className="submissions-widget__th submissions-widget__th--submitted submissions-widget__th--end"
                 scope="col"
               >
+                {sortOn === 'submitted' ? (
+                  <img src={submissionsSortDown} alt="" width={16} height={16} />
+                ) : null}
                 Submitted
               </th>
               <th className="submissions-widget__th submissions-widget__th--status" scope="col">
@@ -116,14 +150,16 @@ export function SubmissionsWidget({ hideHeader = false }: { hideHeader?: boolean
             </tr>
           </thead>
           <tbody>
-            {ROWS.map((row, index) => (
+            {ordered.map(({ row, index }) => (
               <tr
                 key={`${row.id}-${row.created}-${index}`}
-                className={
-                  recordIsOpen(view, 'submissions', records[index])
-                    ? 'widget-table-row widget-table-row--open'
-                    : 'widget-table-row'
-                }
+                className={[
+                  'widget-table-row',
+                  recordIsOpen(view, 'submissions', records[index]) ? 'widget-table-row--open' : '',
+                  selected[index] ? 'submissions-widget__row--selected' : '',
+                ]
+                  .filter(Boolean)
+                  .join(' ')}
                 tabIndex={0}
                 role="button"
                 aria-current={recordIsOpen(view, 'submissions', records[index]) ? 'true' : undefined}
@@ -136,6 +172,20 @@ export function SubmissionsWidget({ hideHeader = false }: { hideHeader?: boolean
                   }
                 }}
               >
+                {selectable ? (
+                  <td className="submissions-widget__td submissions-widget__td--select">
+                    <button
+                      type="button"
+                      className={selected[index] ? 'vision2-check vision2-check--on' : 'vision2-check'}
+                      aria-label={selected[index] ? `Deselect submission ${row.id}` : `Select submission ${row.id}`}
+                      aria-pressed={Boolean(selected[index])}
+                      onClick={(event) => {
+                        event.stopPropagation()
+                        setSelected((current) => ({ ...current, [index]: !current[index] }))
+                      }}
+                    />
+                  </td>
+                ) : null}
                 <td className="submissions-widget__td">{row.id}</td>
                 <td className="submissions-widget__td submissions-widget__td--end">{row.created}</td>
                 <td className="submissions-widget__td submissions-widget__td--end">{row.submitted}</td>

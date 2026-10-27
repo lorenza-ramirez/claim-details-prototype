@@ -1,6 +1,10 @@
 import { useState, type ReactNode } from 'react'
 import {
+  keyboardArrowDown,
+  keyboardArrowUp,
+  leftPanelClose,
   paymentsArrowDropDown,
+  splitSwap,
   submissionAccountCircle,
   submissionRule,
   submissionsError,
@@ -8,6 +12,7 @@ import {
   submissionsRejected,
   viewPreview,
 } from '../assets/icons'
+import arrowBack from '../assets/figma/appeal-arrow-back.svg'
 import { Badge, Field, FieldCol, FieldGrid, InfoBlock } from './ClaimDetailsSplitContent'
 import { SUBMISSION_ROWS, type SubmissionRow, type SubmissionStatusKind } from './submissionsData'
 
@@ -209,5 +214,151 @@ export function SubmissionDetail({
         </DetailSection>
       </section>
     </div>
+  )
+}
+
+function Fact({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="vision2-submission__fact">
+      <span className="vision2-submission__fact-label">{label}</span>
+      <span className="vision2-submission__fact-value">{children}</span>
+    </div>
+  )
+}
+
+function Pair({ label, value, muted = false }: { label: string; value: string; muted?: boolean }) {
+  return (
+    <div className="vision2-submission__field">
+      <span className="vision2-submission__field-label">{label}</span>
+      <span className={muted ? 'vision2-submission__field-value vision2-submission__field-value--muted' : 'vision2-submission__field-value'}>
+        {value}
+      </span>
+    </div>
+  )
+}
+
+/** Submission record opened from the vision 2 submissions list. Synthetic data only. */
+export function SubmissionPanel({
+  row,
+  position,
+  total,
+  onClose,
+  onPrevious,
+  onNext,
+}: {
+  row: SubmissionRow
+  position: number
+  total: number
+  onClose: () => void
+  onPrevious: () => void
+  onNext: () => void
+}) {
+  return (
+    <aside className="vision2-detail" aria-label="Submission detail">
+      <div className="vision2-detail__bar">
+        <button type="button" className="icon-btn" aria-label="Back to submissions" onClick={onClose}>
+          <img src={leftPanelClose} alt="" width={20} height={20} />
+        </button>
+        <button type="button" className="icon-btn" aria-label="Previous submission" disabled={position <= 1} onClick={onPrevious}>
+          <img src={arrowBack} alt="" width={20} height={20} />
+        </button>
+        <button type="button" className="icon-btn" aria-label="Next submission" disabled={position >= total} onClick={onNext}>
+          <img src={arrowBack} alt="" width={20} height={20} className="vision2-icon-flip" />
+        </button>
+      </div>
+      <div className="vision2-submission">
+        <header className="vision2-submission__head">
+          <h2 className="vision2-submission__title">Submission detail</h2>
+          <div className="vision2-submission__tools">
+            <button type="button" className="icon-btn" aria-label="Next submission" disabled={position >= total} onClick={onNext}>
+              <img src={keyboardArrowDown} alt="" width={18} height={18} />
+            </button>
+            <button type="button" className="icon-btn" aria-label="Previous submission" disabled={position <= 1} onClick={onPrevious}>
+              <img src={keyboardArrowUp} alt="" width={18} height={18} />
+            </button>
+            <span className="vision2-submission__count">
+              <span>{position}</span>
+              <span className="vision2-submission__count-sep">/</span>
+              <span className="vision2-submission__count-total">{total}</span>
+            </span>
+            <span className="vision2-submission__divider" aria-hidden />
+            <button type="button" className="icon-btn" aria-label="Compare submission">
+              <img src={splitSwap} alt="" width={20} height={20} />
+            </button>
+            <button type="button" className="icon-btn" aria-label="View claim form PDF">
+              <img src={viewPreview} alt="" width={20} height={20} />
+            </button>
+          </div>
+        </header>
+
+        <div className="vision2-submission__facts">
+          <Fact label="ID">{row.id}</Fact>
+          <Fact label="Created">{row.created}</Fact>
+          <Fact label="Submitted">{row.submitted}</Fact>
+          <Fact label="Status">
+            <span className={`submissions-widget__status submissions-widget__status--${row.status}`}>
+              <img src={STATUS_ICON[row.status]} alt="" width={16} height={16} />
+              {row.statusLabel}
+            </span>
+          </Fact>
+          <Fact label="Total Charges">{row.charges}</Fact>
+          <Fact label="Index">
+            <span className={`submissions-widget__index submissions-widget__index--${row.index}`}>
+              {row.index === 'primary' ? 'Primary' : 'Secondary'}
+            </span>
+          </Fact>
+          <Fact label="Payer">{row.payer}</Fact>
+          <Fact label="Member ID">{row.memberId}</Fact>
+          <Fact label="Type">{row.type}</Fact>
+          <Fact label="Method">{row.method}</Fact>
+        </div>
+
+        <h3 className="vision2-submission__section-title">Basic Information</h3>
+        <section className="vision2-submission__block" aria-labelledby="submission-patient-title">
+          <h4 id="submission-patient-title" className="vision2-submission__block-title">Patient</h4>
+          <div className="vision2-submission__card">
+            <Pair label="First Name" value="Cole" />
+            <Pair label="Insurance Company" value={row.payer} />
+            <Pair label="Last Name" value="Crawford" />
+            <Pair label="Termination Date" value="No termination date" muted />
+            <Pair label="Date of Birth" value="04/02/2012" />
+            <Pair label="Address" value="16691 Boston Pkwy" />
+            <Pair label="Gender" value="Male" />
+            <Pair label="City" value="Clive" />
+            <Pair label="Relationship" value="Child" />
+            <Pair label="State" value="IA" />
+            <Pair label="Member ID" value={row.memberId} />
+            <Pair label="Zipcode" value="50325" />
+            <Pair label="Group Number" value="76412766" />
+          </div>
+        </section>
+
+        <section className="vision2-submission__block" aria-labelledby="submission-eligibility-title">
+          <h4 id="submission-eligibility-title" className="vision2-submission__block-title">Eligibility Central</h4>
+          <div className="vision2-submission__card">
+            <Pair label="Payer Name" value={row.payer} />
+            <Pair label="Company Type" value="Commercial" />
+            <Pair label="Policy Number" value={row.memberId} />
+            <Pair label="Service Type" value="Professional" />
+            <Pair label="Relationship" value="Child" />
+            <Pair label="Group Number" value="76412766" />
+            <Pair label="Provider" value="Nicholas Grimoskas" />
+          </div>
+        </section>
+
+        <section className="vision2-submission__block" aria-labelledby="submission-providers-title">
+          <h4 id="submission-providers-title" className="vision2-submission__block-title">Providers</h4>
+          <div className="vision2-submission__card vision2-submission__card--provider">
+            <div className="vision2-submission__badge">
+              <Badge variant="rendering">Rendering</Badge>
+            </div>
+            <Pair label="Name" value="Nicholas Grimoskas" />
+            <Pair label="Address" value="850 43rd Ave Ste 100" />
+            <Pair label="Provider" value="(309) 762-8890" />
+            <Pair label="Address 2" value="—" muted />
+          </div>
+        </section>
+      </div>
+    </aside>
   )
 }
