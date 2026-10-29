@@ -6,11 +6,13 @@ import {
   submissionsSortDown,
 } from '../assets/icons'
 import { AppealPackageModal } from './AppealPackageModal'
+import { RecordCard } from './RecordCard'
 import { ClaimWidgetTitle, useClaimWidgetOpen } from './ClaimWidgetCollapse'
 import { recordIsOpen, useWidgetView, WidgetViewButtons } from './widgetView'
 import {
   SUBMISSION_RECORDS,
   SUBMISSION_ROWS as ROWS,
+  type SubmissionRow,
   type SubmissionStatusKind as StatusKind,
 } from './submissionsData'
 
@@ -26,6 +28,9 @@ export function SubmissionsWidget({
   sortOn = 'id',
   sortDescending = false,
   selectable = false,
+  selectedIds,
+  onSelectedChange,
+  layout = 'table',
 }: {
   hideHeader?: boolean
   /** When set, a row opens this handler instead of the shared side drawer. */
@@ -33,9 +38,20 @@ export function SubmissionsWidget({
   sortOn?: 'id' | 'submitted'
   sortDescending?: boolean
   selectable?: boolean
+  /** Controlled selection. When omitted, the widget keeps its own selection. */
+  selectedIds?: string[]
+  onSelectedChange?: (ids: string[]) => void
+  layout?: 'table' | 'cards'
 }) {
   const [appealOpen, setAppealOpen] = useState(false)
-  const [selected, setSelected] = useState<Record<number, boolean>>({})
+  const [localSelected, setLocalSelected] = useState<string[]>([])
+  const selected = selectedIds ?? localSelected
+
+  function toggleSelected(id: string) {
+    const next = selected.includes(id) ? selected.filter((item) => item !== id) : [...selected, id]
+    if (onSelectedChange) onSelectedChange(next)
+    else setLocalSelected(next)
+  }
   const { view, openSide } = useWidgetView()
   const { open, contentId, toggle, collapsible } = useClaimWidgetOpen()
   const isOpen = !collapsible || open
@@ -54,11 +70,13 @@ export function SubmissionsWidget({
 
   return (
     <section
-      className={
-        isOpen || hideHeader
-          ? 'submissions-widget'
-          : 'submissions-widget claim-widget--collapsed'
-      }
+      className={[
+        'submissions-widget',
+        isOpen || hideHeader ? '' : 'claim-widget--collapsed',
+        layout === 'cards' ? 'submissions-widget--cards' : '',
+      ]
+        .filter(Boolean)
+        .join(' ')}
       {...(hideHeader
         ? { 'aria-label': 'Submissions' }
         : { 'aria-labelledby': 'submissions-widget-title' })}
@@ -82,7 +100,25 @@ export function SubmissionsWidget({
         </header>
       )}
 
-      {showBody ? (
+      {showBody && layout === 'cards' ? (
+        <div id={contentId} className="submission-cards">
+          {ordered.map(({ row, index }) => (
+            <RecordCard
+              key={`${row.id}-${row.created}-${index}`}
+              title={row.id}
+              label={`submission ${records[index]}`}
+              open={recordIsOpen(view, 'submissions', records[index])}
+              selected={selected.includes(row.id)}
+              selectable={selectable}
+              onOpen={() => openRecord(index)}
+              onToggleSelected={() => toggleSelected(row.id)}
+              action={{ label: 'Appeal', onClick: () => setAppealOpen(true) }}
+              facts={submissionFacts(row)}
+            />
+          ))}
+        </div>
+      ) : null}
+      {showBody && layout === 'table' ? (
       <div id={contentId} className="submissions-widget__table-wrap">
         <table className="submissions-widget__table">
           <thead>
@@ -156,7 +192,7 @@ export function SubmissionsWidget({
                 className={[
                   'widget-table-row',
                   recordIsOpen(view, 'submissions', records[index]) ? 'widget-table-row--open' : '',
-                  selected[index] ? 'submissions-widget__row--selected' : '',
+                  selected.includes(row.id) ? 'submissions-widget__row--selected' : '',
                 ]
                   .filter(Boolean)
                   .join(' ')}
@@ -176,12 +212,12 @@ export function SubmissionsWidget({
                   <td className="submissions-widget__td submissions-widget__td--select">
                     <button
                       type="button"
-                      className={selected[index] ? 'vision2-check vision2-check--on' : 'vision2-check'}
-                      aria-label={selected[index] ? `Deselect submission ${row.id}` : `Select submission ${row.id}`}
-                      aria-pressed={Boolean(selected[index])}
+                      className={selected.includes(row.id) ? 'vision2-check vision2-check--on' : 'vision2-check'}
+                      aria-label={selected.includes(row.id) ? `Deselect submission ${row.id}` : `Select submission ${row.id}`}
+                      aria-pressed={selected.includes(row.id)}
                       onClick={(event) => {
                         event.stopPropagation()
-                        setSelected((current) => ({ ...current, [index]: !current[index] }))
+                        toggleSelected(row.id)
                       }}
                     />
                   </td>
@@ -236,4 +272,27 @@ export function SubmissionsWidget({
       {appealOpen ? <AppealPackageModal onClose={() => setAppealOpen(false)} /> : null}
     </section>
   )
+}
+
+function submissionFacts(row: SubmissionRow) {
+  return [
+    { label: 'Created', value: row.created },
+    { label: 'Submitted', value: row.submitted },
+    {
+      label: 'Status',
+      children: (
+        <span className={`submission-card__status submission-card__status--${row.status}`}>
+          <img src={STATUS_ICON[row.status]} alt="" width={16} height={16} />
+          {row.statusLabel}
+        </span>
+      ),
+    },
+    { label: 'Charges', value: row.charges },
+    { label: 'Index', value: row.index === 'primary' ? 'Primary' : 'Secondary' },
+    { label: 'Payer', value: row.payer },
+    { label: 'Member ID', value: row.memberId },
+    { label: 'Type', value: row.formType },
+    { label: 'Method', value: row.method },
+    { label: 'Submitted by', value: row.submittedBy },
+  ]
 }

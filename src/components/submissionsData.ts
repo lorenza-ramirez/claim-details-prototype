@@ -19,6 +19,23 @@ export type SubmissionRow = {
 }
 
 /** Synthetic demo submissions — not real PHI/PII. */
+const INITIAL_CLAIM: SubmissionRow = {
+  id: '22316691',
+  created: '10/09/2026',
+  submitted: '10/09/2026',
+  status: 'denied',
+  statusLabel: 'Denied',
+  charges: '$386.00',
+  index: 'primary',
+  payer: 'Iowa Blue Shield',
+  memberId: 'IBS10001',
+  type: 'Initial',
+  method: 'Waystar',
+  submissionId: '22316691',
+  formType: 'CMS',
+  submittedBy: 'Colossus',
+}
+
 export const SUBMISSION_ROWS: SubmissionRow[] = [
   {
     id: '70304059',
@@ -36,24 +53,10 @@ export const SUBMISSION_ROWS: SubmissionRow[] = [
     formType: 'CMS',
     submittedBy: 'Unknown',
   },
+  INITIAL_CLAIM,
 ]
 
 export const SUBMISSION_RECORDS = SUBMISSION_ROWS.map((row) => `${row.id} · ${row.created}`)
 
-/** Initial claim from the vision summary. Not part of the submissions table. */
-export const INITIAL_CLAIM_SUBMISSION: SubmissionRow = {
-  id: '22316691',
-  created: '10/09/2026',
-  submitted: '10/09/2026',
-  status: 'denied',
-  statusLabel: 'Denied',
-  charges: '$386.00',
-  index: 'primary',
-  payer: 'Iowa Blue Shield',
-  memberId: 'IBS10001',
-  type: 'Initial',
-  method: 'Waystar',
-  submissionId: '22316691',
-  formType: 'CMS',
-  submittedBy: 'Colossus',
-}
+/** Initial claim from the vision summary. Also listed in the submissions table. */
+export const INITIAL_CLAIM_SUBMISSION: SubmissionRow = INITIAL_CLAIM

@@ -19,6 +19,7 @@ type Adornment =
 
 type ActivityLine = {
   id: string
+  summary: string
   adornment?: Adornment
   body?: ReactNode
   time: string
@@ -41,6 +42,7 @@ function Pill({ icon, children }: { icon: string; children: ReactNode }) {
 const ITEMS: ActivityLine[] = [
   {
     id: 'appointment',
+    summary: 'Appointment occurred, 3 weeks ago',
     adornment: { kind: 'icon', src: activityAppointment },
     time: '3 weeks ago',
     body: (
@@ -51,6 +53,7 @@ const ITEMS: ActivityLine[] = [
   },
   {
     id: 'record-attached',
+    summary: 'Medical record attached to claim, 3 weeks ago',
     adornment: { kind: 'icon', src: activityAttach },
     time: '3 weeks ago',
     body: (
@@ -61,6 +64,7 @@ const ITEMS: ActivityLine[] = [
   },
   {
     id: 'stage',
+    summary: 'Claim stage set to Payer 1, 3 weeks ago',
     adornment: { kind: 'icon', src: propsStage },
     time: '3 weeks ago',
     body: (
@@ -71,6 +75,7 @@ const ITEMS: ActivityLine[] = [
   },
   {
     id: 'submitted',
+    summary: 'Claim submitted for $205.00 to primary insurance UNITED MEDICAL RESOURCES, 20 days ago',
     adornment: { kind: 'icon', src: sendPanel },
     time: '20 days ago',
     viewMore: true,
@@ -83,6 +88,7 @@ const ITEMS: ActivityLine[] = [
   },
   {
     id: 'remit',
+    summary: 'United Medical Resources remittance received: $0.00 paid, 2 days ago',
     adornment: { kind: 'icon', src: submissionsRejected },
     time: '2 days ago',
     viewMore: true,
@@ -95,6 +101,7 @@ const ITEMS: ActivityLine[] = [
   },
   {
     id: 'status',
+    summary: 'Claim status set to Full Denials, 2 days ago',
     adornment: { kind: 'icon', src: propsBlock },
     time: '2 days ago',
     body: (
@@ -105,6 +112,7 @@ const ITEMS: ActivityLine[] = [
   },
   {
     id: 'note-tameka',
+    summary: 'Tameka Jeffery noted the medical record was attached on 9/25, 2 days ago',
     time: '2 days ago',
     note: {
       initials: 'TJ',
@@ -115,6 +123,7 @@ const ITEMS: ActivityLine[] = [
   },
   {
     id: 'note-tawsif',
+    summary: 'Tawsif Kaisar acknowledged the update, 1 day ago',
     time: '1 day ago',
     note: {
       initials: 'TK',
@@ -125,6 +134,7 @@ const ITEMS: ActivityLine[] = [
   },
   {
     id: 'resubmission',
+    summary: 'A resubmission was prepared today, and the 10/16/2026 clearinghouse check passed',
     adornment: { kind: 'icon', src: appealInfo },
     time: 'Today',
     last: true,
@@ -146,6 +156,10 @@ const ITEMS: ActivityLine[] = [
     ],
   },
 ]
+
+export function activitySummary(id: string) {
+  return ITEMS.find((item) => item.id === id)?.summary ?? id
+}
 
 function AdornmentNode({ adornment }: { adornment: Adornment }) {
   if (adornment.kind === 'icon') {
@@ -189,9 +203,15 @@ function Meta({ time, viewMore }: { time: string; viewMore?: boolean }) {
 export function ActivityWidget({
   hideHeader = false,
   defaultOpen = true,
+  selectable = false,
+  selectedIds = [],
+  onSelectedChange,
 }: {
   hideHeader?: boolean
   defaultOpen?: boolean
+  selectable?: boolean
+  selectedIds?: string[]
+  onSelectedChange?: (ids: string[]) => void
 }) {
   const { open, contentId, toggle, collapsible } = useClaimWidgetOpen(defaultOpen)
   const isOpen = !collapsible || open
@@ -228,12 +248,32 @@ export function ActivityWidget({
           {ITEMS.map((item) => (
             <li
               key={item.id}
-              className={
-                item.last
-                  ? 'activity-widget__item activity-widget__item--last'
-                  : 'activity-widget__item'
-              }
+              className={[
+                'activity-widget__item',
+                item.last ? 'activity-widget__item--last' : '',
+                selectedIds.includes(item.id) ? 'vision2-row--selected' : '',
+              ]
+                .filter(Boolean)
+                .join(' ')}
             >
+              {selectable ? (
+                <button
+                  type="button"
+                  className={selectedIds.includes(item.id) ? 'vision2-check vision2-check--on' : 'vision2-check'}
+                  aria-label={
+                    selectedIds.includes(item.id)
+                      ? `Deselect activity ${item.summary}`
+                      : `Select activity ${item.summary}`
+                  }
+                  aria-pressed={selectedIds.includes(item.id)}
+                  onClick={() => {
+                    const next = selectedIds.includes(item.id)
+                      ? selectedIds.filter((id) => id !== item.id)
+                      : [...selectedIds, item.id]
+                    onSelectedChange?.(next)
+                  }}
+                />
+              ) : null}
               <div className="activity-widget__rail" aria-hidden>
                 {item.adornment ? <AdornmentNode adornment={item.adornment} /> : null}
                 {!item.last ? (

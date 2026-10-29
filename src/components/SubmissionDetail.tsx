@@ -1,7 +1,5 @@
 import { useState, type ReactNode } from 'react'
 import {
-  keyboardArrowDown,
-  keyboardArrowUp,
   leftPanelClose,
   paymentsArrowDropDown,
   splitSwap,
@@ -12,7 +10,7 @@ import {
   submissionsRejected,
   viewPreview,
 } from '../assets/icons'
-import arrowBack from '../assets/figma/appeal-arrow-back.svg'
+import appealClose from '../assets/figma/appeal-close.svg'
 import { Badge, Field, FieldCol, FieldGrid, InfoBlock } from './ClaimDetailsSplitContent'
 import { SUBMISSION_ROWS, type SubmissionRow, type SubmissionStatusKind } from './submissionsData'
 
@@ -242,55 +240,45 @@ export function SubmissionPanel({
   row,
   position,
   total,
+  onOpenProperties,
   onClose,
-  onPrevious,
-  onNext,
 }: {
   row: SubmissionRow
   position: number
   total: number
+  onOpenProperties?: () => void
   onClose: () => void
-  onPrevious: () => void
-  onNext: () => void
 }) {
   return (
     <aside className="vision2-detail" aria-label="Submission detail">
-      <div className="vision2-detail__bar">
-        <button type="button" className="icon-btn" aria-label="Back to submissions" onClick={onClose}>
-          <img src={leftPanelClose} alt="" width={20} height={20} />
-        </button>
-        <button type="button" className="icon-btn" aria-label="Previous submission" disabled={position <= 1} onClick={onPrevious}>
-          <img src={arrowBack} alt="" width={20} height={20} />
-        </button>
-        <button type="button" className="icon-btn" aria-label="Next submission" disabled={position >= total} onClick={onNext}>
-          <img src={arrowBack} alt="" width={20} height={20} className="vision2-icon-flip" />
-        </button>
-      </div>
-      <div className="vision2-submission">
-        <header className="vision2-submission__head">
+      <header className="vision2-submission__head">
+        <div className="vision2-submission__title-group">
+          {onOpenProperties ? (
+            <button type="button" className="icon-btn" aria-label="Open properties" onClick={onOpenProperties}>
+              <img src={leftPanelClose} alt="" width={20} height={20} />
+            </button>
+          ) : null}
           <h2 className="vision2-submission__title">Submission detail</h2>
-          <div className="vision2-submission__tools">
-            <button type="button" className="icon-btn" aria-label="Next submission" disabled={position >= total} onClick={onNext}>
-              <img src={keyboardArrowDown} alt="" width={18} height={18} />
-            </button>
-            <button type="button" className="icon-btn" aria-label="Previous submission" disabled={position <= 1} onClick={onPrevious}>
-              <img src={keyboardArrowUp} alt="" width={18} height={18} />
-            </button>
-            <span className="vision2-submission__count">
-              <span>{position}</span>
-              <span className="vision2-submission__count-sep">/</span>
-              <span className="vision2-submission__count-total">{total}</span>
-            </span>
-            <span className="vision2-submission__divider" aria-hidden />
-            <button type="button" className="icon-btn" aria-label="Compare submission">
-              <img src={splitSwap} alt="" width={20} height={20} />
-            </button>
-            <button type="button" className="icon-btn" aria-label="View claim form PDF">
-              <img src={viewPreview} alt="" width={20} height={20} />
-            </button>
-          </div>
-        </header>
-
+        </div>
+        <div className="vision2-submission__tools">
+          <span className="vision2-submission__count">
+            <span>{position}</span>
+            <span className="vision2-submission__count-sep">/</span>
+            <span className="vision2-submission__count-total">{total}</span>
+          </span>
+          <span className="vision2-submission__divider" aria-hidden />
+          <button type="button" className="icon-btn" aria-label="Compare submission">
+            <img src={splitSwap} alt="" width={20} height={20} />
+          </button>
+          <button type="button" className="icon-btn" aria-label="View claim form PDF">
+            <img src={viewPreview} alt="" width={20} height={20} />
+          </button>
+          <button type="button" className="icon-btn" aria-label="Back to submissions" title="Back to submissions" onClick={onClose}>
+            <img src={appealClose} alt="" width={20} height={20} />
+          </button>
+        </div>
+      </header>
+      <div className="vision2-submission">
         <div className="vision2-submission__facts">
           <Fact label="ID">{row.id}</Fact>
           <Fact label="Created">{row.created}</Fact>

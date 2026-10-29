@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState, type DragEvent, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type DragEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react'
 import spotDocs from '../assets/figma/spot-docs.svg'
-import arrowBack from '../assets/figma/appeal-arrow-back.svg'
+import appealClose from '../assets/figma/appeal-close.svg'
 import {
   appealInfo,
   attachFile,
@@ -8,8 +8,6 @@ import {
   checkCircle,
   copy,
   dynamicFeed,
-  keyboardArrowDown,
-  keyboardArrowUp,
   leftPanelClose,
   link,
   monetizationOn,
@@ -19,8 +17,8 @@ import {
   propsStageProgress,
   propsStatusWarning,
   reviewOpenInNew,
+  search,
   sendPanel,
-  submissionsSortDown,
   thumbDown,
   thumbUp,
   tune,
@@ -29,15 +27,19 @@ import {
   aiGroup2,
 } from '../assets/icons'
 import { GlobalHeader, Sidebar } from './ClaimDetailsPage'
-import { ActivityWidget } from './ActivityWidget'
+import { ActivityWidget, activitySummary } from './ActivityWidget'
 import { ClaimWidgetsCollapseProvider } from './ClaimWidgetCollapse'
-import { DocumentationWidget } from './DocumentationWidget'
-import { PaymentsWidget } from './PaymentsWidget'
+import { DOCUMENT_ROWS, DocumentationWidget } from './DocumentationWidget'
+import { PAYMENT_RECORDS, PaymentsWidget } from './PaymentsWidget'
 import { RemittanceDetail } from './RemittanceDetail'
 import { RemittancesWidget } from './RemittancesWidget'
-import { IOWA_BLUE_SHIELD_REMITTANCE } from './remittancesData'
+import {
+  IOWA_BLUE_SHIELD_REMITTANCE,
+  REMITTANCE_ROWS,
+  type RemittanceRow,
+} from './remittancesData'
 import { ClaimDetailsSplitContent } from './ClaimDetailsSplitContent'
-import { SimilarClaimsWidget } from './SimilarClaimsWidget'
+import { SIMILAR_CLAIM_ROWS, SimilarClaimsWidget } from './SimilarClaimsWidget'
 import { SubmissionDetail, SubmissionPanel } from './SubmissionDetail'
 import { SubmissionsWidget } from './SubmissionsWidget'
 import { INITIAL_CLAIM_SUBMISSION, SUBMISSION_ROWS, type SubmissionRow } from './submissionsData'
@@ -45,12 +47,6 @@ import { useWidgetView, WidgetViewProvider } from './widgetView'
 
 const CLAIM_ID = '22316691'
 const CLAIM_TOTAL = 30
-
-const SHORTCUTS = [
-  'Why was 97140 adjudicated?',
-  'What changed in the resubmission?',
-  'Has this payer denied PI-252 before?',
-]
 
 const CHAT_REPLIES: Record<string, string> = {
   'Why was 97140 adjudicated?':
@@ -63,9 +59,16 @@ const CHAT_REPLIES: Record<string, string> = {
     'I can prepare a resubmission to Iowa Blue Shield after the diagnosis change is applied. The open balance is $346.00.',
 }
 
+type ChatReference = {
+  key: string
+  tool: string
+  detail: string
+  icon: string
+}
+
 type ChatItem =
   | { kind: 'widget'; id: ToolId }
-  | { kind: 'user'; id: string; text: string }
+  | { kind: 'user'; id: string; text: string; references: ChatReference[] }
   | { kind: 'assistant'; id: string; text: string }
 
 function replyFor(text: string) {
@@ -87,6 +90,260 @@ const TOOLS = [
 ] as const
 
 type ToolId = (typeof TOOLS)[number]['id']
+
+type ComposerChip = {
+  key: string
+  icon: string
+  label: string
+  removable: boolean
+}
+
+type ComposerContext = {
+  key: string
+  title: string
+  compare: boolean
+  chips: ComposerChip[]
+  references: ChatReference[]
+  facts: string[]
+}
+
+function toolIcon(id: ToolId) {
+  return TOOLS.find((tool) => tool.id === id)?.icon ?? sendPanel
+}
+
+function submissionFact(row: SubmissionRow) {
+  return `Submission ${row.id} was created ${row.created}, submitted ${row.submitted} to ${row.payer} for ${row.charges}, and is ${row.statusLabel}.`
+}
+
+function pageFacts(tool: ToolId) {
+  if (tool === 'submissions') return SUBMISSION_ROWS.map(submissionFact)
+  if (tool === 'remittances') {
+    return REMITTANCE_ROWS.map(
+      (row) =>
+        `Remittance ${row.checkNumber} (${row.source}) on ${row.checkDate} is ${row.status}, insurance paid ${row.insPaid}, and was sent to ${row.sentTo}.`,
+    )
+  }
+  if (tool === 'payments') {
+    return PAYMENT_RECORDS.map(
+      (row) => `Payment ${row.label} (${row.kind}) has charges ${row.charges}, paid ${row.paid}, and balance ${row.balance}.`,
+    )
+  }
+  if (tool === 'attachments') {
+    return DOCUMENT_ROWS.map((row) => `Attachment ${row.name} is a ${row.type} document dated ${row.date}.`)
+  }
+  if (tool === 'similar-claims') {
+    return SIMILAR_CLAIM_ROWS.map(
+      (row) => `Similar claim ${row.id} is ${row.status}, with date of service ${row.dateOfService} and provider ${row.provider}.`,
+    )
+  }
+  if (tool === 'activity') return [activitySummary('submitted'), activitySummary('remit'), activitySummary('resubmission')]
+  if (tool === 'claim-details') return [`Claim ${CLAIM_ID} details are open.`]
+  return ['No appeals have been filed for this claim.']
+}
+
+function pageContext(tool: ToolId): ComposerContext {
+  const label = TOOLS.find((item) => item.id === tool)?.label ?? 'Details'
+  const facts = pageFacts(tool)
+  return {
+    key: `page:${tool}`,
+    title: `${label} selected`,
+    compare: false,
+    chips: [],
+    references: [{ key: `page-${tool}`, tool: label, detail: label, icon: toolIcon(tool) }],
+    facts,
+  }
+}
+
+const SUMMARY_CONTEXT: ComposerContext = {
+  key: 'summary',
+  title: 'Summary selected',
+  compare: false,
+  chips: [{ key: 'summary', icon: spotDocs, label: 'Claim summary', removable: false }],
+  references: [
+    {
+      key: 'summary',
+      tool: 'Summary',
+      detail: 'Denied claim, CO-16 / M76, $346.00 open',
+      icon: spotDocs,
+    },
+  ],
+  facts: [
+    'This claim was fully denied. Iowa Blue Shield denied lines 97110, 97112, 97140, and 97161 under CO-16 with remark M76. Nothing has been paid, and the $346.00 balance remains open. The next step is to correct the diagnosis and resubmit.',
+  ],
+}
+
+const DIAGNOSIS_ACTION_CONTEXT: ComposerContext = {
+  key: 'action:diagnosis',
+  title: 'Suggested action selected',
+  compare: false,
+  chips: [
+    {
+      key: 'diagnosis-action',
+      icon: checkCircle,
+      label: 'Replace M54.5 with M54.50 or remove diagnosis',
+      removable: false,
+    },
+  ],
+  references: [
+    {
+      key: 'diagnosis-action',
+      tool: 'Suggested action',
+      detail: 'Replace M54.5 with M54.50 or remove the diagnosis',
+      icon: checkCircle,
+    },
+  ],
+  facts: [
+    'Suggested action: replace diagnosis M54.5 with M54.50, or remove the diagnosis, before resubmitting to Iowa Blue Shield.',
+  ],
+}
+
+function chipContext(
+  key: string,
+  title: string,
+  compare: boolean,
+  chips: ComposerChip[],
+  references: ChatReference[],
+  facts: string[],
+): ComposerContext {
+  return { key, title, compare, chips, references, facts }
+}
+
+function submissionChip(row: SubmissionRow, removable: boolean): ComposerChip {
+  return {
+    key: row.id,
+    icon: toolIcon('submissions'),
+    label: `# ${row.id} | ${row.created} | ${row.statusLabel}`,
+    removable,
+  }
+}
+
+function submissionReference(row: SubmissionRow): ChatReference {
+  return {
+    key: `submissions-${row.id}`,
+    tool: 'Submissions',
+    detail: `# ${row.id} · ${row.created} · ${row.statusLabel}`,
+    icon: toolIcon('submissions'),
+  }
+}
+
+function deriveComposerContext({
+  detailTool,
+  submissionFocus,
+  tableRecord,
+  selectedSubmissions,
+}: {
+  detailTool: ToolId | null
+  submissionFocus: SubmissionRow | null
+  tableRecord: TableRecord | null
+  selectedSubmissions: SubmissionRow[]
+}): ComposerContext | null {
+  if (!detailTool) return null
+
+  if (detailTool === 'submissions' && submissionFocus) {
+    return chipContext(
+      `record:submissions:${submissionFocus.id}`,
+      'Submissions selected',
+      false,
+      [submissionChip(submissionFocus, false)],
+      [submissionReference(submissionFocus)],
+      [submissionFact(submissionFocus)],
+    )
+  }
+
+  if (detailTool === 'submissions' && selectedSubmissions.length) {
+    const noun = selectedSubmissions.length === 1 ? 'Submission' : 'Submissions'
+    return chipContext(
+      `submissions:${selectedSubmissions.map((row) => row.id).join(',')}`,
+      `${selectedSubmissions.length} selected ${noun}`,
+      selectedSubmissions.length > 1,
+      selectedSubmissions.map((row) => submissionChip(row, true)),
+      selectedSubmissions.map(submissionReference),
+      selectedSubmissions.map(submissionFact),
+    )
+  }
+
+  if (tableRecord && detailTool === tableRecord.tool) {
+    const focused = focusedRecordContext(tableRecord)
+    if (focused) return focused
+  }
+
+  return pageContext(detailTool)
+}
+
+function focusedRecordContext(record: TableRecord): ComposerContext | null {
+  if (record.tool === 'remittances') {
+    const row = record.remittance ?? REMITTANCE_ROWS[record.index]
+    if (!row) return null
+    const label = `${row.checkNumber} | ${row.source} | ${row.checkDate}`
+    return chipContext(
+      `record:remittances:${record.index}:${row.source}`,
+      'Remittances selected',
+      false,
+      [{ key: label, icon: toolIcon('remittances'), label, removable: false }],
+      [{ key: label, tool: 'Remittances', detail: `${row.checkNumber} · ${row.source} · ${row.checkDate}`, icon: toolIcon('remittances') }],
+      [`Remittance ${row.checkNumber} (${row.source}) on ${row.checkDate} is ${row.status}, insurance paid ${row.insPaid}, and was sent to ${row.sentTo}.`],
+    )
+  }
+  if (record.tool === 'payments') {
+    const row = PAYMENT_RECORDS[record.index]
+    if (!row) return null
+    const label = `${row.label} | ${row.kind} | ${row.charges}`
+    return chipContext(
+      `record:payments:${row.label}`,
+      'Payments selected',
+      false,
+      [{ key: row.label, icon: toolIcon('payments'), label, removable: false }],
+      [{ key: row.label, tool: 'Payments', detail: `${row.label} · ${row.kind} · ${row.charges}`, icon: toolIcon('payments') }],
+      [`Payment ${row.label} (${row.kind}) has charges ${row.charges}, paid ${row.paid}, and balance ${row.balance}.`],
+    )
+  }
+  if (record.tool === 'attachments') {
+    const row = DOCUMENT_ROWS[record.index]
+    if (!row) return null
+    return chipContext(
+      `record:attachments:${row.id}`,
+      'Attachments selected',
+      false,
+      [{ key: row.id, icon: toolIcon('attachments'), label: row.name, removable: false }],
+      [{ key: row.id, tool: 'Attachments', detail: row.name, icon: toolIcon('attachments') }],
+      [`Attachment ${row.name} is a ${row.type} document dated ${row.date}.`],
+    )
+  }
+  const claim = SIMILAR_CLAIM_ROWS[record.index]
+  if (!claim) return null
+  const label = `# ${claim.id} | ${claim.dateOfService} | ${claim.status}`
+  return chipContext(
+    `record:similar:${claim.id}`,
+    'Similar Claims selected',
+    false,
+    [{ key: claim.id, icon: toolIcon('similar-claims'), label, removable: false }],
+    [{ key: claim.id, tool: 'Similar Claims', detail: `# ${claim.id} · ${claim.dateOfService} · ${claim.status}`, icon: toolIcon('similar-claims') }],
+    [`Similar claim ${claim.id} is ${claim.status}, with date of service ${claim.dateOfService} and provider ${claim.provider}.`],
+  )
+}
+
+type TableTool = 'remittances' | 'payments' | 'attachments' | 'similar-claims'
+
+type TableRecord = {
+  tool: TableTool
+  index: number
+  remittance?: RemittanceRow
+}
+
+function tableRecordCount(record: TableRecord) {
+  if (record.index < 0) return 1
+  if (record.tool === 'remittances') return REMITTANCE_ROWS.length
+  if (record.tool === 'payments') return PAYMENT_RECORDS.length
+  if (record.tool === 'attachments') return DOCUMENT_ROWS.length
+  return SIMILAR_CLAIM_ROWS.length
+}
+
+const RECORD_COPY: Record<TableTool, { title: string; list: string; noun: string }> = {
+  remittances: { title: 'Remittance detail', list: 'remittances', noun: 'remittance' },
+  payments: { title: 'Payment detail', list: 'payments', noun: 'payment' },
+  attachments: { title: 'Attachment detail', list: 'attachments', noun: 'attachment' },
+  'similar-claims': { title: 'Similar claim detail', list: 'similar claims', noun: 'similar claim' },
+}
 
 const WIDGET_ASKS: { id: ToolId; pattern: RegExp }[] = [
   { id: 'claim-details', pattern: /\bclaim details?\b/i },
@@ -194,38 +451,64 @@ function AiMark() {
   )
 }
 
+const PROPERTIES_MIN = 240
+const PROPERTIES_MAX = 560
+const WORKSPACE_MIN = 403
+const DETAIL_MIN = 360
+
 function Vision2Properties({
   tab,
   onTab,
   onToggle,
-  onPrevious,
-  onNext,
-  previousDisabled,
-  nextDisabled,
 }: {
   tab: 'properties' | 'activity'
   onTab: (tab: 'properties' | 'activity') => void
   onToggle: () => void
-  onPrevious: () => void
-  onNext: () => void
-  previousDisabled: boolean
-  nextDisabled: boolean
 }) {
   const [tags, setTags] = useState<string[]>(['Label'])
+  const [width, setWidth] = useState(300)
+
+  function resizeBy(delta: number) {
+    setWidth((current) => Math.min(PROPERTIES_MAX, Math.max(PROPERTIES_MIN, current + delta)))
+  }
+
+  function startResize(event: ReactPointerEvent<HTMLDivElement>) {
+    event.preventDefault()
+    const startX = event.clientX
+    const startWidth = width
+    function move(next: PointerEvent) {
+      setWidth(Math.round(Math.min(PROPERTIES_MAX, Math.max(PROPERTIES_MIN, startWidth + next.clientX - startX))))
+    }
+    function stop() {
+      window.removeEventListener('pointermove', move)
+      window.removeEventListener('pointerup', stop)
+    }
+    window.addEventListener('pointermove', move)
+    window.addEventListener('pointerup', stop)
+  }
 
   return (
-    <aside className="vision2-properties" aria-label="Claim properties">
+    <aside className="vision2-properties" aria-label="Claim properties" style={{ width }}>
       <div className="vision2-properties__nav">
         <button type="button" className="icon-btn" aria-label="Collapse properties" onClick={onToggle}>
           <Icon src={leftPanelClose} size={20} />
         </button>
-        <button type="button" className="icon-btn" aria-label="Previous claim" disabled={previousDisabled} onClick={onPrevious}>
-          <Icon src={arrowBack} size={20} />
-        </button>
-        <button type="button" className="icon-btn" aria-label="Next claim" disabled={nextDisabled} onClick={onNext}>
-          <Icon src={arrowBack} size={20} className="vision2-icon-flip" />
-        </button>
       </div>
+      <div
+        className="vision2-properties__resize"
+        role="separator"
+        aria-orientation="vertical"
+        aria-label="Resize properties"
+        aria-valuemin={PROPERTIES_MIN}
+        aria-valuemax={PROPERTIES_MAX}
+        aria-valuenow={width}
+        tabIndex={0}
+        onPointerDown={startResize}
+        onKeyDown={(event) => {
+          if (event.key === 'ArrowLeft') resizeBy(-16)
+          if (event.key === 'ArrowRight') resizeBy(16)
+        }}
+      />
       <div className="vision2-tabs" role="tablist" aria-label="Claim side panel">
         <button
           type="button"
@@ -343,16 +626,18 @@ function VisionScreen() {
   const { view, close: closeRecord } = useWidgetView()
   const promptRef = useRef<HTMLInputElement>(null)
   const stageRef = useRef<HTMLDivElement>(null)
+  const canvasRef = useRef<HTMLDivElement>(null)
+  const [workspaceWidth, setWorkspaceWidth] = useState<number | null>(null)
+  const [workspaceResizing, setWorkspaceResizing] = useState(false)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true)
   const [feedback, setFeedback] = useState<'up' | 'down' | null>(null)
   const [diagnosisChoice, setDiagnosisChoice] = useState<'replace' | 'remove' | null>(null)
   const [prompt, setPrompt] = useState('')
-  const [claimPosition, setClaimPosition] = useState(1)
+  const claimPosition = 1
   const [propertiesOpen, setPropertiesOpen] = useState(true)
   const [sideTab, setSideTab] = useState<'properties' | 'activity'>('properties')
   const [feed, setFeed] = useState<ChatItem[]>([])
   const [activityOn, setActivityOn] = useState(false)
-  const [shortcutsVisible, setShortcutsVisible] = useState(true)
   const messageId = useRef(0)
   const pinnedTools = feed.flatMap((item) => (item.kind === 'widget' ? [item.id] : []))
   const [selectedTool, setSelectedTool] = useState<ToolId | null>(null)
@@ -367,8 +652,33 @@ function VisionScreen() {
   const [claimDetailsOpen, setClaimDetailsOpen] = useState(false)
   const [chatDrop, setChatDrop] = useState(false)
   const [detailTool, setDetailTool] = useState<ToolId | null>(null)
+  const [panelOpen, setPanelOpen] = useState(false)
   const [submissionFocus, setSubmissionFocus] = useState<SubmissionRow | null>(null)
-  const [sortDescending, setSortDescending] = useState(true)
+  const [tableRecord, setTableRecord] = useState<TableRecord | null>(null)
+  const [selectedSubmissionIds, setSelectedSubmissionIds] = useState<string[]>([])
+  const [selectedRemittanceIds, setSelectedRemittanceIds] = useState<string[]>([])
+  const [dismissedContextKey, setDismissedContextKey] = useState<string | null>(null)
+  const [askContext, setAskContext] = useState<ComposerContext | null>(null)
+  const selectedSubmissions = selectedSubmissionIds
+    .map((id) => SUBMISSION_ROWS.find((row) => row.id === id))
+    .filter((row): row is SubmissionRow => Boolean(row))
+  const panelVisible = panelOpen && detailTool != null
+  const liveContext = deriveComposerContext({
+    detailTool: panelVisible ? detailTool : null,
+    submissionFocus,
+    tableRecord,
+    selectedSubmissions,
+  })
+  const composerContext =
+    askContext && askContext.key !== dismissedContextKey
+      ? askContext
+      : liveContext && liveContext.key !== dismissedContextKey
+        ? liveContext
+        : null
+
+  useEffect(() => {
+    setAskContext(null)
+  }, [detailTool, submissionFocus, tableRecord, selectedSubmissionIds, selectedRemittanceIds])
 
   function scrollToWidget(tool: ToolId) {
     const stage = stageRef.current
@@ -384,15 +694,39 @@ function VisionScreen() {
     promptRef.current?.focus()
   }
 
+  function selectAskContext(context: ComposerContext) {
+    setDismissedContextKey(null)
+    setAskContext(context)
+    ask()
+  }
+
+  function hideContext() {
+    if (askContext) {
+      setAskContext(null)
+      return
+    }
+    if (!liveContext) return
+    if (liveContext.key.startsWith('submissions:')) setSelectedSubmissionIds([])
+    const onList = panelVisible && !submissionFocus && !(tableRecord && detailTool === tableRecord.tool)
+    setDismissedContextKey(onList ? `page:${detailTool}` : liveContext.key)
+  }
+
+  function contextReply(message: string, facts: string[]) {
+    if (facts.length >= 2 && /compar/i.test(message)) return facts.join(' ')
+    return `${replyFor(message)} This uses the selected context: ${facts.join(' ')}`
+  }
+
   function send(text?: string) {
     const message = (text ?? prompt).trim()
-    if (!message) return
-    setShortcutsVisible(false)
+    const references = composerContext?.references ?? []
+    const facts = composerContext?.facts ?? []
+    if (!message && references.length === 0) return
     messageId.current += 1
     const userId = `user-${messageId.current}`
     messageId.current += 1
     const assistantId = `assistant-${messageId.current}`
-      const asked = widgetsAsked(message)
+      const comparing = references.length > 0 && /compar/i.test(message)
+      const asked = comparing ? [] : widgetsAsked(message)
       if (asked.includes('claim-details')) openClaimDetails()
       const toShow = asked.filter((id) => id !== 'activity' && id !== 'claim-details')
       if (asked.includes('activity')) setActivityOn(true)
@@ -402,13 +736,22 @@ function VisionScreen() {
         )
         const next: ChatItem[] = [
           ...withoutAsked,
-          { kind: 'user', id: userId, text: message },
-          { kind: 'assistant', id: assistantId, text: asked.length ? widgetIntro(asked) : replyFor(message) },
+          { kind: 'user', id: userId, text: message, references },
+          {
+            kind: 'assistant',
+            id: assistantId,
+            text: asked.length
+              ? widgetIntro(asked)
+              : references.length
+                ? contextReply(message, facts)
+                : replyFor(message),
+          },
         ]
         for (const id of toShow) next.push({ kind: 'widget', id })
         return next
       })
     if (asked.length) setSelectedTool(asked[asked.length - 1])
+    if (references.length) hideContext()
     setPrompt('')
   }
 
@@ -444,11 +787,9 @@ function VisionScreen() {
   function addToolToChat(tool: ToolId) {
     if (tool === 'activity') {
       setActivityOn(true)
-      setShortcutsVisible(false)
       setSelectedTool(tool)
       return
     }
-    setShortcutsVisible(false)
     setFeed((current) => {
       const present = current.some((item) => item.kind === 'widget' && item.id === tool)
       return present ? current : [...current, { kind: 'widget', id: tool }]
@@ -480,47 +821,46 @@ function VisionScreen() {
 
   useEffect(() => {
     const stage = stageRef.current
-    const latest = stage?.querySelector<HTMLElement>('[data-chat-latest]')
-    if (!stage || !latest) return
-    const top = latest.getBoundingClientRect().top - stage.getBoundingClientRect().top + stage.scrollTop - 24
-    stage.scrollTo({ top, behavior: 'smooth' })
+    if (!stage) return
+    stage.scrollTop = stage.scrollHeight
   }, [feed])
 
   const recordOpen = view?.mode === 'side' && view.recordTitle != null
 
   function openDetail(tool: ToolId) {
     setSubmissionFocus(null)
-    setDetailTool((current) => (current === tool ? null : tool))
+    setTableRecord(null)
+    if (detailTool === tool && panelOpen) {
+      setPanelOpen(false)
+      return
+    }
+    setDetailTool(tool)
+    setPanelOpen(true)
   }
 
-  function toggleClaimDetails() {
-    setSubmissionFocus(null)
-    setDetailTool((current) => (current === 'claim-details' ? null : 'claim-details'))
+  function togglePanel() {
+    if (panelOpen && detailTool) {
+      setPanelOpen(false)
+      return
+    }
+    if (!detailTool) setDetailTool('claim-details')
+    setPanelOpen(true)
   }
 
   function openSubmission(index: number) {
     const row = SUBMISSION_ROWS[index]
     if (!row) return
+    setTableRecord(null)
     setDetailTool('submissions')
+    setPanelOpen(true)
     setSubmissionFocus(row)
   }
 
-  function moveTool(delta: number) {
+  function openTableRecord(tool: TableTool, index: number) {
     setSubmissionFocus(null)
-    setDetailTool((current) => {
-      if (!current) return current
-      const index = TOOLS.findIndex((item) => item.id === current)
-      return TOOLS[index + delta]?.id ?? current
-    })
-  }
-
-  function moveSubmission(delta: number) {
-    setSubmissionFocus((current) => {
-      if (!current) return current
-      const list = current.id === INITIAL_CLAIM_SUBMISSION.id ? [INITIAL_CLAIM_SUBMISSION] : SUBMISSION_ROWS
-      const index = list.findIndex((row) => row.id === current.id)
-      return list[index + delta] ?? current
-    })
+    setDetailTool(tool)
+    setPanelOpen(true)
+    setTableRecord({ tool, index })
   }
 
   function openClaimDetails() {
@@ -538,6 +878,7 @@ function VisionScreen() {
     setRemittanceOpen(false)
     setSubmissionOpen(false)
     setDetailTool('submissions')
+    setPanelOpen(true)
     setSubmissionFocus(INITIAL_CLAIM_SUBMISSION)
   }
 
@@ -554,7 +895,11 @@ function VisionScreen() {
     setClaimDetailsOpen(false)
     setSubmissionOpen(false)
     setDiagnosisOpen(false)
-    setRemittanceOpen(true)
+    setRemittanceOpen(false)
+    setSubmissionFocus(null)
+    setDetailTool('remittances')
+    setPanelOpen(true)
+    setTableRecord({ tool: 'remittances', index: -1, remittance: IOWA_BLUE_SHIELD_REMITTANCE })
   }
 
   function closeDrawers() {
@@ -582,36 +927,62 @@ function VisionScreen() {
     return () => window.removeEventListener('keydown', onKey)
   }, [claimDetailsOpen, submissionOpen, diagnosisOpen, remittanceOpen, recordOpen])
 
-  const detailOpen = detailTool != null
-  const columnClosed = !propertiesOpen && !detailOpen
+  const detailOpen = panelVisible
+  const workspaceSized = detailOpen && workspaceWidth != null
+
+  function workspaceMax() {
+    const canvas = canvasRef.current
+    if (!canvas) return workspaceWidth ?? WORKSPACE_MIN
+    const properties = canvas.querySelector<HTMLElement>('.vision2-properties')?.offsetWidth ?? 0
+    const rail = canvas.querySelector<HTMLElement>('.vision2-rail')?.offsetWidth ?? 0
+    return Math.max(WORKSPACE_MIN, canvas.clientWidth - properties - rail - DETAIL_MIN)
+  }
+
+  function resizeWorkspaceBy(delta: number) {
+    const current =
+      workspaceWidth ??
+      canvasRef.current?.querySelector<HTMLElement>('.vision-workspace')?.offsetWidth ??
+      WORKSPACE_MIN
+    setWorkspaceWidth(Math.round(Math.min(workspaceMax(), Math.max(WORKSPACE_MIN, current + delta))))
+  }
+
+  function startWorkspaceResize(event: ReactPointerEvent<HTMLDivElement>) {
+    event.preventDefault()
+    const startX = event.clientX
+    const startWidth = event.currentTarget.parentElement?.offsetWidth ?? workspaceWidth ?? WORKSPACE_MIN
+    const max = workspaceMax()
+    setWorkspaceResizing(true)
+    function move(next: PointerEvent) {
+      setWorkspaceWidth(Math.round(Math.min(max, Math.max(WORKSPACE_MIN, startWidth + startX - next.clientX))))
+    }
+    function stop() {
+      setWorkspaceResizing(false)
+      window.removeEventListener('pointermove', move)
+      window.removeEventListener('pointerup', stop)
+    }
+    window.addEventListener('pointermove', move)
+    window.addEventListener('pointerup', stop)
+  }
+
+  useEffect(() => {
+    if (!workspaceSized) return
+    function clamp() {
+      setWorkspaceWidth((current) => {
+        if (current == null) return current
+        return Math.min(current, workspaceMax())
+      })
+    }
+    window.addEventListener('resize', clamp)
+    return () => window.removeEventListener('resize', clamp)
+  }, [workspaceSized, propertiesOpen])
 
   const claimNav = (
     <div className="claim-header vision-claim-nav">
       <div className="claim-header__left">
-        {!propertiesOpen ? (
-          <>
-            <button type="button" className="icon-btn" aria-label="Expand properties" onClick={() => setPropertiesOpen(true)}>
-              <Icon src={leftPanelClose} size={20} />
-            </button>
-            <button
-              type="button"
-              className="icon-btn"
-              aria-label="Previous claim"
-              disabled={claimPosition <= 1}
-              onClick={() => setClaimPosition((value) => Math.max(1, value - 1))}
-            >
-              <Icon src={arrowBack} size={20} />
-            </button>
-            <button
-              type="button"
-              className="icon-btn"
-              aria-label="Next claim"
-              disabled={claimPosition >= CLAIM_TOTAL}
-              onClick={() => setClaimPosition((value) => Math.min(CLAIM_TOTAL, value + 1))}
-            >
-              <Icon src={arrowBack} size={20} className="vision2-icon-flip" />
-            </button>
-          </>
+        {!propertiesOpen && !detailOpen ? (
+          <button type="button" className="icon-btn" aria-label="Open properties" onClick={() => setPropertiesOpen(true)}>
+            <Icon src={leftPanelClose} size={20} />
+          </button>
         ) : null}
         <h1 className="claim-header__title">{CLAIM_ID}</h1>
         <button
@@ -636,26 +1007,6 @@ function VisionScreen() {
       </div>
       <div className="claim-header__right">
         <div className="page-controls vision-page-controls">
-          <div className="vision-page-controls__arrows">
-            <button
-              type="button"
-              className="icon-btn"
-              aria-label="Next claim"
-              disabled={claimPosition >= CLAIM_TOTAL}
-              onClick={() => setClaimPosition((value) => Math.min(CLAIM_TOTAL, value + 1))}
-            >
-              <Icon src={keyboardArrowDown} size={18} />
-            </button>
-            <button
-              type="button"
-              className="icon-btn"
-              aria-label="Previous claim"
-              disabled={claimPosition <= 1}
-              onClick={() => setClaimPosition((value) => Math.max(1, value - 1))}
-            >
-              <Icon src={keyboardArrowUp} size={18} />
-            </button>
-          </div>
           <div className="page-index" role="status" aria-label={`Claim ${claimPosition} of ${CLAIM_TOTAL}`}>
             <span className="page-index__current">{claimPosition}</span>
             <span className="page-index__sep">/</span>
@@ -677,20 +1028,24 @@ function VisionScreen() {
         />
         <div className="content-row">
           <section className="app-canvas vision-canvas" aria-label="Claim vision">
-            <div className={columnClosed ? 'vision-canvas__body vision2-body--closed' : 'vision-canvas__body'}>
-            {columnClosed ? claimNav : null}
+            <div
+              ref={canvasRef}
+              className={[
+                'vision-canvas__body',
+                workspaceSized ? 'vision2-canvas--split' : '',
+                workspaceResizing ? 'resize-handle-active' : '',
+              ]
+                .filter(Boolean)
+                .join(' ')}
+            >
             {propertiesOpen ? (
             <Vision2Properties
               tab={sideTab}
               onTab={setSideTab}
               onToggle={() => setPropertiesOpen((value) => !value)}
-              onPrevious={() => setClaimPosition((value) => Math.max(1, value - 1))}
-              onNext={() => setClaimPosition((value) => Math.min(CLAIM_TOTAL, value + 1))}
-              previousDisabled={claimPosition <= 1}
-              nextDisabled={claimPosition >= CLAIM_TOTAL}
             />
             ) : null}
-            {submissionFocus && detailTool === 'submissions' ? (
+            {detailOpen && submissionFocus && detailTool === 'submissions' ? (
               <SubmissionPanel
                 row={submissionFocus}
                 position={
@@ -698,22 +1053,26 @@ function VisionScreen() {
                     .findIndex((row) => row.id === submissionFocus.id) + 1
                 }
                 total={submissionFocus.id === INITIAL_CLAIM_SUBMISSION.id ? 1 : SUBMISSION_ROWS.length}
+                onOpenProperties={propertiesOpen ? undefined : () => setPropertiesOpen(true)}
                 onClose={() => setSubmissionFocus(null)}
-                onPrevious={() => moveSubmission(-1)}
-                onNext={() => moveSubmission(1)}
               />
-            ) : detailTool ? (
+            ) : detailOpen && tableRecord && detailTool === tableRecord.tool ? (
+              <TableRecordPanel
+                record={tableRecord}
+                onOpenProperties={propertiesOpen ? undefined : () => setPropertiesOpen(true)}
+                onClose={() => setTableRecord(null)}
+              />
+            ) : detailOpen && detailTool ? (
               <Vision2Detail
                 tool={detailTool}
                 showNav={!propertiesOpen}
                 onOpenSubmission={openSubmission}
+                onOpenTableRecord={openTableRecord}
                 onOpenProperties={() => setPropertiesOpen(true)}
-                onPrevious={() => moveTool(-1)}
-                onNext={() => moveTool(1)}
-                previousDisabled={TOOLS.findIndex((item) => item.id === detailTool) <= 0}
-                nextDisabled={TOOLS.findIndex((item) => item.id === detailTool) >= TOOLS.length - 1}
-                sortDescending={sortDescending}
-                onToggleSort={() => setSortDescending((value) => !value)}
+                selectedSubmissionIds={selectedSubmissionIds}
+                onSelectedSubmissionsChange={setSelectedSubmissionIds}
+                selectedRemittanceIds={selectedRemittanceIds}
+                onSelectedRemittancesChange={setSelectedRemittanceIds}
               />
             ) : null}
             <div className={propertiesOpen ? 'vision2-body__rest' : 'vision2-body__rest'}>
@@ -724,16 +1083,16 @@ function VisionScreen() {
               <button
                 type="button"
                 className="icon-btn vision2-rail__expand"
-                aria-label={detailTool === 'claim-details' ? 'Hide claim details' : 'Show claim details'}
-                aria-expanded={detailTool === 'claim-details'}
-                onClick={toggleClaimDetails}
+                aria-label={detailOpen ? 'Close left panel' : 'Open left panel'}
+                aria-expanded={detailOpen}
+                onClick={togglePanel}
               >
-                <Icon src={viewDoubleArrow} size={20} className={detailTool === 'claim-details' ? 'vision2-icon-flip' : undefined} />
+                <Icon src={viewDoubleArrow} size={20} className={detailOpen ? 'vision2-icon-flip' : undefined} />
               </button>
               <div className="vision2-rail__list">
-                {TOOLS.map((tool) => {
-                      const pinned = tool.id === 'activity' ? activityOn : pinnedTools.includes(tool.id)
-                      const canReorder = tool.id !== 'activity' && pinned && pinnedTools.length > 1
+                {TOOLS.filter((tool) => tool.id !== 'activity').map((tool) => {
+                      const pinned = pinnedTools.includes(tool.id)
+                      const canReorder = pinned && pinnedTools.length > 1
                       const dropClass =
                         dropTarget?.id === tool.id && dragTool !== tool.id
                           ? dropTarget.after
@@ -744,7 +1103,7 @@ function VisionScreen() {
                         <div
                           key={tool.id}
                           id={`vision-tool-${tool.id}`}
-                          className={`${pinned && selectedTool === tool.id ? 'vision-tool vision-tool--selected' : 'vision-tool'}${pinned ? ' vision-tool--jump' : ''}${dragTool === tool.id ? ' vision-tool--dragging' : ''}${detailTool === tool.id ? ' vision-tool--active' : ''}${dropClass}`}
+                          className={`${pinned && selectedTool === tool.id ? 'vision-tool vision-tool--selected' : 'vision-tool'}${pinned ? ' vision-tool--jump' : ''}${dragTool === tool.id ? ' vision-tool--dragging' : ''}${detailOpen && detailTool === tool.id ? ' vision-tool--active' : ''}${dropClass}`}
                           draggable
                           onClick={() => {
                             if (suppressToolClickRef.current) return
@@ -801,7 +1160,7 @@ function VisionScreen() {
                             draggable
                             tabIndex={pinned ? 0 : -1}
                             aria-label={tool.label}
-                            aria-pressed={detailTool === tool.id}
+                            aria-pressed={detailOpen && detailTool === tool.id}
                             onDragStart={(event) => startToolDrag(event, tool.id)}
                             onDragEnd={endToolDrag}
                           >
@@ -815,8 +1174,29 @@ function VisionScreen() {
                     })}
               </div>
             </aside>
-            <div className="vision-workspace">
-              {!columnClosed ? claimNav : null}
+            <div
+              className="vision-workspace"
+              style={workspaceSized && workspaceWidth != null ? { width: workspaceWidth, flex: '0 0 auto' } : undefined}
+            >
+              {detailOpen ? (
+                <div
+                  className="vision2-workspace__resize"
+                  role="separator"
+                  aria-orientation="vertical"
+                  aria-label="Resize summary"
+                  aria-valuemin={WORKSPACE_MIN}
+                  aria-valuemax={workspaceMax()}
+                  aria-valuenow={workspaceWidth ?? undefined}
+                  tabIndex={0}
+                  onPointerDown={startWorkspaceResize}
+                  onDoubleClick={() => setWorkspaceWidth(null)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'ArrowLeft') resizeWorkspaceBy(16)
+                    if (event.key === 'ArrowRight') resizeWorkspaceBy(-16)
+                  }}
+                />
+              ) : null}
+              {claimNav}
               <div className="vision-workspace__body">
             <div
               className={chatDrop ? 'vision-main vision-main--drop' : 'vision-main'}
@@ -843,19 +1223,17 @@ function VisionScreen() {
                     <span className="vision2-emblem" aria-hidden>
                       <AiMark />
                     </span>
-                  <section className="vision-summary" aria-labelledby="vision-summary-title">
+                  <section
+                    className={
+                      askContext?.key === 'summary' ? 'vision-summary vision-summary--context' : 'vision-summary'
+                    }
+                    aria-labelledby="vision-summary-title"
+                    onClick={() => selectAskContext(SUMMARY_CONTEXT)}
+                  >
                     <header className="vision-summary__header">
                       <h2 id="vision-summary-title" className="vision2-summary__title">
                         Summary
                       </h2>
-                      <button
-                        type="button"
-                        className="ai-tab claim-summary__ask"
-                        onClick={() => ask()}
-                      >
-                        <AiMark />
-                        <span className="claim-summary__ask-label">Ask Athelas AI</span>
-                      </button>
                     </header>
                       <div id="vision-summary-body">
                         <div className="claim-summary__details">
@@ -930,7 +1308,17 @@ function VisionScreen() {
 
                         <div className="claim-summary__suggested vision-suggested">
                           <p className="claim-summary__actions-label">Suggested Actions</p>
-                          <div className="vision-step-card">
+                          <div
+                            className={
+                              askContext?.key === 'action:diagnosis'
+                                ? 'vision-step-card vision-step-card--context'
+                                : 'vision-step-card'
+                            }
+                            onClick={(event) => {
+                              event.stopPropagation()
+                              selectAskContext(DIAGNOSIS_ACTION_CONTEXT)
+                            }}
+                          >
                             <span className="vision-step__num">1.</span>
                             <button
                               type="button"
@@ -953,7 +1341,7 @@ function VisionScreen() {
                             </button>
                           </div>
                           <p className="vision-followup">After the diagnosis is fixed</p>
-                          <div className="vision-step-card">
+                          <div className="vision-step-card" onClick={(event) => event.stopPropagation()}>
                             <span className="vision-step__num">2.</span>
                             <button
                               type="button"
@@ -978,7 +1366,15 @@ function VisionScreen() {
                     if (item.kind === 'widget') {
                       return (
                         <div key={`widget-${item.id}`} className="vision-chat-slot" {...latest}>
-                          <PinnedToolWidget id={item.id} onOpenSubmission={openSubmission} />
+                          <PinnedToolWidget
+                            id={item.id}
+                            onOpenSubmission={openSubmission}
+                            onOpenTableRecord={openTableRecord}
+                            selectedSubmissionIds={selectedSubmissionIds}
+                            onSelectedSubmissionsChange={setSelectedSubmissionIds}
+                            selectedRemittanceIds={selectedRemittanceIds}
+                            onSelectedRemittancesChange={setSelectedRemittanceIds}
+                          />
                         </div>
                       )
                     }
@@ -999,7 +1395,22 @@ function VisionScreen() {
                         <div className="vision-chat__body">
                           <span className="vision-chat__who">{item.kind === 'user' ? 'You' : 'Ask Athelas'}</span>
                           <div className="vision-chat__bubble">
-                            <p>{item.text}</p>
+                            {item.kind === 'user' && item.references.length ? (
+                              <div className="vision2-refs">
+                                {item.references.map((reference) => (
+                                  <div key={reference.key} className="vision2-ref">
+                                    <span className="vision2-ref__preview" aria-hidden>
+                                      <img src={reference.icon} alt="" width={16} height={16} />
+                                    </span>
+                                    <p className="vision2-ref__label">
+                                      <span className="vision2-ref__tool">{reference.tool}</span>
+                                      {reference.detail}
+                                    </p>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : null}
+                            {item.text ? <p>{item.text}</p> : null}
                           </div>
                         </div>
                       </div>
@@ -1007,7 +1418,15 @@ function VisionScreen() {
                   })}
                   {activityOn ? (
                     <div className="vision-chat-slot">
-                      <PinnedToolWidget id="activity" onOpenSubmission={openSubmission} />
+                      <PinnedToolWidget
+                        id="activity"
+                        onOpenSubmission={openSubmission}
+                        onOpenTableRecord={openTableRecord}
+                        selectedSubmissionIds={selectedSubmissionIds}
+                        onSelectedSubmissionsChange={setSelectedSubmissionIds}
+                        selectedRemittanceIds={selectedRemittanceIds}
+                        onSelectedRemittancesChange={setSelectedRemittanceIds}
+                      />
                     </div>
                   ) : null}
                 </div>
@@ -1021,21 +1440,47 @@ function VisionScreen() {
                 }}
               >
                 <div className="vision-ask__inner">
-                  {shortcutsVisible ? (
-                    <div className="vision-shortcuts">
-                      {SHORTCUTS.map((shortcut) => (
+                  <div className="vision2-ask-stack">
+                  {composerContext ? (
+                    <div className="vision2-context">
+                      <div className="vision2-context__head">
+                        <div className="vision2-context__titles">
+                          <p className="vision2-context__label">{composerContext.title}</p>
+                        </div>
+                        {composerContext.compare ? <span className="vision2-context__badge">Compare</span> : null}
                         <button
-                          key={shortcut}
                           type="button"
-                          className="vision-chip"
-                          onClick={() => send(shortcut)}
+                          className="vision2-context__clear"
+                          aria-label="Clear selected context"
+                          onClick={hideContext}
                         >
-                          {shortcut}
+                          <img src={appealClose} alt="" width={14} height={14} />
                         </button>
-                      ))}
+                      </div>
+                      {composerContext.chips.length ? (
+                        <div className="vision2-context__chips">
+                          {composerContext.chips.map((chip) => (
+                            <span key={chip.key} className="vision2-context__chip">
+                              <img src={chip.icon} alt="" width={14} height={14} />
+                              <span>{chip.label}</span>
+                              {chip.removable ? (
+                                <button
+                                  type="button"
+                                  aria-label={`Remove ${chip.label}`}
+                                  onClick={() =>
+                                    setSelectedSubmissionIds((ids) => ids.filter((id) => id !== chip.key))
+                                  }
+                                >
+                                  <img src={appealClose} alt="" width={12} height={12} />
+                                </button>
+                              ) : null}
+                            </span>
+                          ))}
+                        </div>
+                      ) : null}
                     </div>
                   ) : null}
-                  <div className="vision-composer">
+                  <div className={`vision-composer${composerContext ? ' vision-composer--context' : ''}`}>
                     <input
                       ref={promptRef}
                       className="vision-composer__input"
@@ -1057,6 +1502,7 @@ function VisionScreen() {
                         </button>
                       </span>
                     </div>
+                  </div>
                   </div>
                 </div>
               </form>
@@ -1166,31 +1612,138 @@ function DiagnosisCodes() {
 
 const TABLE_TOOLS = new Set<ToolId>(['submissions', 'remittances', 'attachments', 'payments', 'similar-claims'])
 
+function TableRecordPanel({
+  record,
+  onOpenProperties,
+  onClose,
+}: {
+  record: TableRecord
+  onOpenProperties?: () => void
+  onClose: () => void
+}) {
+  const copy = RECORD_COPY[record.tool]
+  const total = tableRecordCount(record)
+  const position = record.index < 0 ? 1 : record.index + 1
+
+  return (
+    <aside className="vision2-detail" aria-label={copy.title}>
+      <header className="vision2-submission__head">
+        <div className="vision2-submission__title-group">
+          {onOpenProperties ? (
+            <button type="button" className="icon-btn" aria-label="Open properties" onClick={onOpenProperties}>
+              <img src={leftPanelClose} alt="" width={20} height={20} />
+            </button>
+          ) : null}
+          <h2 className="vision2-submission__title">{copy.title}</h2>
+        </div>
+        <div className="vision2-submission__tools">
+          <span className="vision2-submission__count">
+            <span>{position}</span>
+            <span className="vision2-submission__count-sep">/</span>
+            <span className="vision2-submission__count-total">{total}</span>
+          </span>
+          <button
+            type="button"
+            className="icon-btn"
+            aria-label={`Back to ${copy.list}`}
+            title={`Back to ${copy.list}`}
+            onClick={onClose}
+          >
+            <img src={appealClose} alt="" width={20} height={20} />
+          </button>
+        </div>
+      </header>
+      <div className="vision2-record">
+        <TableRecordBody record={record} />
+      </div>
+    </aside>
+  )
+}
+
+function RecordFact({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="vision2-submission__fact">
+      <span className="vision2-submission__fact-label">{label}</span>
+      <span className="vision2-submission__fact-value">{value}</span>
+    </div>
+  )
+}
+
+function TableRecordBody({ record }: { record: TableRecord }) {
+  if (record.tool === 'remittances') {
+    const row = record.remittance ?? REMITTANCE_ROWS[record.index]
+    if (!row) return null
+    return <RemittanceDetail recordIndex={Math.max(record.index, 0)} row={row} paidBy={record.remittance ? 'Iowa Blue Shield' : 'UMR'} />
+  }
+
+  if (record.tool === 'payments') {
+    const row = PAYMENT_RECORDS[record.index]
+    if (!row) return null
+    return (
+      <div className="vision2-submission__facts vision2-record__facts">
+        <RecordFact label="Name" value={row.label} />
+        <RecordFact label="Kind" value={row.kind} />
+        <RecordFact label="Charges" value={row.charges} />
+        <RecordFact label="Paid" value={row.paid} />
+        <RecordFact label="PR" value={row.pr} />
+        <RecordFact label="Adj." value={row.adj} />
+        <RecordFact label="Balance" value={row.balance} />
+      </div>
+    )
+  }
+
+  if (record.tool === 'attachments') {
+    const row = DOCUMENT_ROWS[record.index]
+    if (!row) return null
+    return (
+      <div className="vision2-submission__facts vision2-record__facts">
+        <RecordFact label="Name" value={row.name} />
+        <RecordFact label="Type" value={row.type} />
+        <RecordFact label="Document Date" value={row.date} />
+        <RecordFact label="Tags" value={row.tags.join(', ')} />
+      </div>
+    )
+  }
+
+  const claim = SIMILAR_CLAIM_ROWS[record.index]
+  if (!claim) return null
+  return (
+    <div className="vision2-submission__facts vision2-record__facts">
+      <RecordFact label="Claim ID" value={claim.id} />
+      <RecordFact label="Status" value={claim.status} />
+      <RecordFact label="Stage" value={claim.stage} />
+      <RecordFact label="Provider" value={claim.provider} />
+      <RecordFact label="Date of Service" value={claim.dateOfService} />
+      <RecordFact label="Assignee" value={claim.assignee} />
+    </div>
+  )
+}
+
 function Vision2Detail({
   tool,
   showNav,
   onOpenSubmission,
+  onOpenTableRecord,
   onOpenProperties,
-  onPrevious,
-  onNext,
-  previousDisabled,
-  nextDisabled,
-  sortDescending,
-  onToggleSort,
+  selectedSubmissionIds,
+  onSelectedSubmissionsChange,
+  selectedRemittanceIds,
+  onSelectedRemittancesChange,
 }: {
   tool: ToolId
   showNav: boolean
   onOpenSubmission: (index: number) => void
+  onOpenTableRecord: (tool: TableTool, index: number) => void
   onOpenProperties: () => void
-  onPrevious: () => void
-  onNext: () => void
-  previousDisabled: boolean
-  nextDisabled: boolean
-  sortDescending: boolean
-  onToggleSort: () => void
+  selectedSubmissionIds: string[]
+  onSelectedSubmissionsChange: (ids: string[]) => void
+  selectedRemittanceIds: string[]
+  onSelectedRemittancesChange: (ids: string[]) => void
 }) {
   const label = TOOLS.find((item) => item.id === tool)?.label ?? 'Details'
   const table = TABLE_TOOLS.has(tool)
+  const [attachmentSearchOpen, setAttachmentSearchOpen] = useState(false)
+  const [attachmentQuery, setAttachmentQuery] = useState('')
   return (
     <aside className="vision2-detail" aria-label={label}>
       {showNav ? (
@@ -1198,35 +1751,55 @@ function Vision2Detail({
         <button type="button" className="icon-btn" aria-label="Open properties" onClick={onOpenProperties}>
           <img src={leftPanelClose} alt="" width={20} height={20} />
         </button>
-        <button type="button" className="icon-btn" aria-label="Previous" disabled={previousDisabled} onClick={onPrevious}>
-          <img src={arrowBack} alt="" width={20} height={20} />
-        </button>
-        <button type="button" className="icon-btn" aria-label="Next" disabled={nextDisabled} onClick={onNext}>
-          <img src={arrowBack} alt="" width={20} height={20} className="vision2-icon-flip" />
-        </button>
       </div>
       ) : null}
       <div className="vision2-detail__heading">
         <h2 className="vision2-detail__title">{label}</h2>
+        {tool === 'attachments' && attachmentSearchOpen ? (
+          <input
+            className="vision2-detail__search"
+            value={attachmentQuery}
+            placeholder="Search attachments"
+            aria-label="Search attachments"
+            autoFocus
+            onChange={(event) => setAttachmentQuery(event.target.value)}
+          />
+        ) : null}
         {table ? (
           <div className="vision2-detail__heading-actions">
+            {tool === 'attachments' ? (
+              <button
+                type="button"
+                className="vision2-detail__tool"
+                aria-label="Search attachments"
+                aria-pressed={attachmentSearchOpen}
+                onClick={() => {
+                  setAttachmentSearchOpen((current) => {
+                    if (current) setAttachmentQuery('')
+                    return !current
+                  })
+                }}
+              >
+                <img src={search} alt="" width={20} height={20} />
+              </button>
+            ) : null}
             <button type="button" className="vision2-detail__tool" aria-label="Filters">
               <img src={tune} alt="" width={20} height={20} />
-            </button>
-            <button
-              type="button"
-              className="vision2-detail__tool"
-              aria-label="Sort descending"
-              aria-pressed={sortDescending}
-              onClick={onToggleSort}
-            >
-              <img src={submissionsSortDown} alt="" width={20} height={20} />
             </button>
           </div>
         ) : null}
       </div>
       <div className={table ? 'vision2-detail__body vision2-detail__body--flush' : 'vision2-detail__body'}>
-        <DetailBody tool={tool} onOpenSubmission={onOpenSubmission} sortDescending={sortDescending} />
+        <DetailBody
+          tool={tool}
+          onOpenSubmission={onOpenSubmission}
+          onOpenTableRecord={onOpenTableRecord}
+          selectedSubmissionIds={selectedSubmissionIds}
+          onSelectedSubmissionsChange={onSelectedSubmissionsChange}
+          selectedRemittanceIds={selectedRemittanceIds}
+          onSelectedRemittancesChange={onSelectedRemittancesChange}
+          attachmentQuery={attachmentQuery}
+        />
       </div>
     </aside>
   )
@@ -1235,11 +1808,21 @@ function Vision2Detail({
 function DetailBody({
   tool,
   onOpenSubmission,
-  sortDescending,
+  onOpenTableRecord,
+  selectedSubmissionIds,
+  onSelectedSubmissionsChange,
+  selectedRemittanceIds,
+  onSelectedRemittancesChange,
+  attachmentQuery = '',
 }: {
   tool: ToolId
   onOpenSubmission: (index: number) => void
-  sortDescending: boolean
+  onOpenTableRecord: (tool: TableTool, index: number) => void
+  selectedSubmissionIds: string[]
+  onSelectedSubmissionsChange: (ids: string[]) => void
+  selectedRemittanceIds: string[]
+  onSelectedRemittancesChange: (ids: string[]) => void
+  attachmentQuery?: string
 }) {
   if (tool === 'claim-details') return <ClaimDetailsSplitContent />
   if (tool === 'activity') return <ActivityWidget hideHeader />
@@ -1247,21 +1830,61 @@ function DetailBody({
     return (
       <SubmissionsWidget
         hideHeader
+        layout="cards"
         onOpenRecord={onOpenSubmission}
         sortOn="submitted"
-        sortDescending={sortDescending}
+        sortDescending
         selectable
+        selectedIds={selectedSubmissionIds}
+        onSelectedChange={onSelectedSubmissionsChange}
       />
     )
   }
-  if (tool === 'remittances') return <RemittancesWidget hideHeader />
-  if (tool === 'attachments') return <DocumentationWidget title="Attachments" hideHeader />
-  if (tool === 'payments') return <PaymentsWidget hideHeader />
+  if (tool === 'remittances') {
+    return (
+      <RemittancesWidget
+        hideHeader
+        layout="cards"
+        onOpenRecord={(index) => onOpenTableRecord('remittances', index)}
+        selectable
+        selectedIds={selectedRemittanceIds}
+        onSelectedChange={onSelectedRemittancesChange}
+      />
+    )
+  }
+  if (tool === 'attachments') {
+    return (
+      <DocumentationWidget
+        title="Attachments"
+        hideHeader
+        layout="cards"
+        searchQuery={attachmentQuery}
+        onOpenRecord={(index) => onOpenTableRecord('attachments', index)}
+      />
+    )
+  }
+  if (tool === 'payments') return <PaymentsWidget hideHeader onOpenRecord={(index) => onOpenTableRecord('payments', index)} />
   if (tool === 'appeals') return <p className="claim-v2__empty">No appeals have been filed for this claim.</p>
-  return <SimilarClaimsWidget />
+  return <SimilarClaimsWidget onOpenRecord={(index) => onOpenTableRecord('similar-claims', index)} />
 }
 
-function PinnedToolWidget({ id, onOpenSubmission }: { id: ToolId; onOpenSubmission: (index: number) => void }) {
+function PinnedToolWidget({
+  id,
+  onOpenSubmission,
+  onOpenTableRecord,
+  selectedSubmissionIds,
+  onSelectedSubmissionsChange,
+  selectedRemittanceIds,
+  onSelectedRemittancesChange,
+}: {
+  id: ToolId
+  onOpenSubmission: (index: number) => void
+  onOpenTableRecord: (tool: TableTool, index: number) => void
+  selectedSubmissionIds: string[]
+  onSelectedSubmissionsChange: (ids: string[]) => void
+  selectedRemittanceIds: string[]
+  onSelectedRemittancesChange: (ids: string[]) => void
+}) {
   const tool = TOOLS.find((item) => item.id === id)
   if (!tool) return null
   if (id === 'claim-details') return <ClaimDetailsCard />
@@ -1276,14 +1899,30 @@ function PinnedToolWidget({ id, onOpenSubmission }: { id: ToolId; onOpenSubmissi
       </header>
       <div className="vision-widget__body">
         {id === 'activity' ? <ActivityWidget hideHeader /> : null}
-        {id === 'submissions' ? <SubmissionsWidget hideHeader onOpenRecord={onOpenSubmission} /> : null}
-        {id === 'remittances' ? <RemittancesWidget hideHeader /> : null}
-        {id === 'attachments' ? <DocumentationWidget title="Attachments" hideHeader /> : null}
-        {id === 'payments' ? <PaymentsWidget hideHeader /> : null}
+        {id === 'submissions' ? (
+          <SubmissionsWidget
+            hideHeader
+            onOpenRecord={onOpenSubmission}
+            selectable
+            selectedIds={selectedSubmissionIds}
+            onSelectedChange={onSelectedSubmissionsChange}
+          />
+        ) : null}
+        {id === 'remittances' ? (
+          <RemittancesWidget
+            hideHeader
+            onOpenRecord={(index) => onOpenTableRecord('remittances', index)}
+            selectable
+            selectedIds={selectedRemittanceIds}
+            onSelectedChange={onSelectedRemittancesChange}
+          />
+        ) : null}
+        {id === 'attachments' ? <DocumentationWidget title="Attachments" hideHeader onOpenRecord={(index) => onOpenTableRecord('attachments', index)} /> : null}
+        {id === 'payments' ? <PaymentsWidget hideHeader onOpenRecord={(index) => onOpenTableRecord('payments', index)} /> : null}
         {id === 'appeals' ? (
           <p className="claim-v2__empty">No appeals have been filed for this claim.</p>
         ) : null}
-        {id === 'similar-claims' ? <SimilarClaimsWidget /> : null}
+        {id === 'similar-claims' ? <SimilarClaimsWidget onOpenRecord={(index) => onOpenTableRecord('similar-claims', index)} /> : null}
       </div>
     </section>
   )

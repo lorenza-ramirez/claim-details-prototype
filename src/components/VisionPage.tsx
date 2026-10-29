@@ -8,7 +8,6 @@ import {
   copy,
   dynamicFeed,
   keyboardArrowDown,
-  keyboardArrowDown2,
   keyboardArrowDown3,
   layoutColumns,
   link,
@@ -50,12 +49,6 @@ import { useWidgetView, WidgetViewProvider } from './widgetView'
 
 const CLAIM_ID = '22316691'
 const CLAIM_TOTAL = 30
-
-const SHORTCUTS = [
-  'Why was 97140 adjudicated?',
-  'What changed in the resubmission?',
-  'Has this payer denied PI-252 before?',
-]
 
 const CHAT_REPLIES: Record<string, string> = {
   'Why was 97140 adjudicated?':
@@ -209,13 +202,12 @@ function VisionScreen() {
   const [feedback, setFeedback] = useState<'up' | 'down' | null>(null)
   const [diagnosisChoice, setDiagnosisChoice] = useState<'replace' | 'remove' | null>(null)
   const [prompt, setPrompt] = useState('')
-  const [claimPosition, setClaimPosition] = useState(1)
+  const claimPosition = 1
   const toolsOpen = true
   const [propertiesOpen, setPropertiesOpen] = useState(true)
   const [feed, setFeed] = useState<ChatItem[]>([])
   const [activityOn, setActivityOn] = useState(false)
   const [layoutPrompt, setLayoutPrompt] = useState(false)
-  const [shortcutsVisible, setShortcutsVisible] = useState(true)
   const messageId = useRef(0)
   const pinnedTools = feed.flatMap((item) => (item.kind === 'widget' ? [item.id] : []))
   const [selectedTool, setSelectedTool] = useState<ToolId | null>(null)
@@ -254,7 +246,6 @@ function VisionScreen() {
   function send(text?: string) {
     const message = (text ?? prompt).trim()
     if (!message) return
-    setShortcutsVisible(false)
     messageId.current += 1
     const userId = `user-${messageId.current}`
     messageId.current += 1
@@ -294,14 +285,12 @@ function VisionScreen() {
       setActivityOn(pinned)
       setLayoutPrompt(true)
       if (pinned) {
-        setShortcutsVisible(false)
         setSelectedTool(tool)
       } else {
         setSelectedTool((current) => (current === tool ? null : current))
       }
       return
     }
-    if (pinned) setShortcutsVisible(false)
     setLayoutPrompt(true)
     setFeed((current) => {
       const present = current.some((item) => item.kind === 'widget' && item.id === tool)
@@ -417,26 +406,6 @@ function VisionScreen() {
       </div>
       <div className="claim-header__right">
         <div className="page-controls vision-page-controls">
-          <div className="vision-page-controls__arrows">
-            <button
-              type="button"
-              className="icon-btn"
-              aria-label="Next claim"
-              disabled={claimPosition >= CLAIM_TOTAL}
-              onClick={() => setClaimPosition((value) => Math.min(CLAIM_TOTAL, value + 1))}
-            >
-              <Icon src={keyboardArrowDown2} size={18} />
-            </button>
-            <button
-              type="button"
-              className="icon-btn"
-              aria-label="Previous claim"
-              disabled={claimPosition <= 1}
-              onClick={() => setClaimPosition((value) => Math.max(1, value - 1))}
-            >
-              <Icon src={keyboardArrowDown2} size={18} className="vision-summary__chevron--open" />
-            </button>
-          </div>
           <div className="page-index" role="status" aria-label={`Claim ${claimPosition} of ${CLAIM_TOTAL}`}>
             <span className="page-index__current">{claimPosition}</span>
             <span className="page-index__sep">/</span>
@@ -848,20 +817,6 @@ function VisionScreen() {
                 }}
               >
                 <div className="vision-ask__inner">
-                  {shortcutsVisible ? (
-                    <div className="vision-shortcuts">
-                      {SHORTCUTS.map((shortcut) => (
-                        <button
-                          key={shortcut}
-                          type="button"
-                          className="vision-chip"
-                          onClick={() => send(shortcut)}
-                        >
-                          {shortcut}
-                        </button>
-                      ))}
-                    </div>
-                  ) : null}
                   <div className="vision-composer">
                     <input
                       ref={promptRef}

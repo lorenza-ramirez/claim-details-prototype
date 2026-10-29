@@ -12,8 +12,6 @@ import {
   collapseContent,
   dockToRight,
   expandContent,
-  keyboardArrowDown2,
-  keyboardArrowUp,
   leftPanelClose,
   viewDoubleArrow,
   viewMenu,
@@ -292,7 +290,6 @@ export function WidgetViewPanel({
   onOpenFull,
   recordIndex,
   recordCount,
-  onNavigateRecord,
   docked = false,
   expanded = false,
   onToggleExpand,
@@ -325,11 +322,7 @@ export function WidgetViewPanel({
     showSideActions &&
     recordCount != null &&
     recordCount > 1 &&
-    recordIndex != null &&
-    onNavigateRecord
-
-  const canGoPrev = showRecordNav && recordIndex > 0
-  const canGoNext = showRecordNav && recordIndex < recordCount - 1
+    recordIndex != null
 
   const panelClassName = [
     'widget-view-panel',
@@ -406,26 +399,6 @@ export function WidgetViewPanel({
             {showRecordNav ? (
               <>
                 <div className="page-controls widget-view-panel__record-nav">
-                  <button
-                    type="button"
-                    className="icon-btn"
-                    aria-label="Next record"
-                    title="Next record"
-                    disabled={!canGoNext}
-                    onClick={() => onNavigateRecord(1)}
-                  >
-                    <Icon src={keyboardArrowDown2} size={18} />
-                  </button>
-                  <button
-                    type="button"
-                    className="icon-btn"
-                    aria-label="Previous record"
-                    title="Previous record"
-                    disabled={!canGoPrev}
-                    onClick={() => onNavigateRecord(-1)}
-                  >
-                    <Icon src={keyboardArrowUp} size={18} />
-                  </button>
                   <div
                     className="page-index"
                     aria-label={`Record ${recordIndex + 1} of ${recordCount}`}

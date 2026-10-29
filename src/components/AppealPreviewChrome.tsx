@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import pdfArrowDown from '../assets/figma/pdf-arrow-down.svg'
 import pdfDownload from '../assets/figma/pdf-download.svg'
 import pdfMoreVert from '../assets/figma/pdf-more-vert.svg'
 import pdfPrint from '../assets/figma/pdf-print.svg'
@@ -58,21 +57,13 @@ export function AppealPreviewTabs<T extends string>({
 export function AppealPdfBar({
   pageCount = 2,
   page: controlledPage,
-  onPageChange,
 }: {
   pageCount?: number
   page?: number
   onPageChange?: (page: number) => void
 }) {
-  const [uncontrolledPage, setUncontrolledPage] = useState(1)
   const [zoom, setZoom] = useState(100)
-
-  const page = controlledPage ?? uncontrolledPage
-
-  function setPage(next: number) {
-    if (controlledPage == null) setUncontrolledPage(next)
-    onPageChange?.(next)
-  }
+  const page = controlledPage ?? 1
 
   function stepZoom(delta: number) {
     const index = ZOOM_LEVELS.indexOf(zoom)
@@ -83,27 +74,9 @@ export function AppealPdfBar({
   return (
     <div className="appeal-pdf-bar" aria-label="PDF viewer">
       <div className="appeal-pdf-bar__group">
-        <button
-          type="button"
-          className="icon-btn icon-btn--outlined"
-          aria-label="Previous page"
-          disabled={page <= 1}
-          onClick={() => setPage(Math.max(1, page - 1))}
-        >
-          <img src={pdfArrowDown} alt="" width={20} height={20} className="appeal-pdf-bar__page-prev" />
-        </button>
         <span className="appeal-pdf-bar__pages">
           {page} of {pageCount}
         </span>
-        <button
-          type="button"
-          className="icon-btn icon-btn--outlined"
-          aria-label="Next page"
-          disabled={page >= pageCount}
-          onClick={() => setPage(Math.min(pageCount, page + 1))}
-        >
-          <img src={pdfArrowDown} alt="" width={20} height={20} />
-        </button>
       </div>
 
       <div className="appeal-pdf-bar__group appeal-pdf-bar__group--zoom">

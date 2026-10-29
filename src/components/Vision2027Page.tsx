@@ -30,8 +30,6 @@ function AttentionDialog({ onClose }: { onClose: () => void }) {
   const [index, setIndex] = useState(0)
   const [chosen, setChosen] = useState<Record<string, string>>({})
   const claim = ATTENTION_CLAIMS[index]
-  const atStart = index === 0
-  const atEnd = index === CLAIM_COUNT - 1
 
   useEffect(() => {
     const shell = shellRef.current
@@ -188,28 +186,6 @@ function AttentionDialog({ onClose }: { onClose: () => void }) {
         </div>
 
         <div className="v27-handles">
-          <div className="v27-handle-row">
-            <button
-              type="button"
-              className="v27-arrow v27-arrow--prev"
-              aria-label="Previous claim"
-              aria-controls="v27-dialog"
-              disabled={atStart}
-              onClick={() => setIndex((current) => current - 1)}
-            >
-              <Chevron direction="left" />
-            </button>
-            <button
-              type="button"
-              className="v27-arrow v27-arrow--next"
-              aria-label="Next claim"
-              aria-controls="v27-dialog"
-              disabled={atEnd}
-              onClick={() => setIndex((current) => current + 1)}
-            >
-              <Chevron direction="right" />
-            </button>
-          </div>
           <div className="v27-dots" role="tablist" aria-label="Claims that need attention">
             {ATTENTION_CLAIMS.map((item, dotIndex) => (
               <button
@@ -234,20 +210,6 @@ function AttentionDialog({ onClose }: { onClose: () => void }) {
 function focusable(root: HTMLElement) {
   return [...root.querySelectorAll<HTMLElement>('button, [href], [tabindex]:not([tabindex="-1"])')].filter(
     (element) => !element.hasAttribute('disabled'),
-  )
-}
-
-function Chevron({ direction }: { direction: 'left' | 'right' }) {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden>
-      <path
-        d={direction === 'left' ? 'm14 6-6 6 6 6' : 'm10 6 6 6-6 6'}
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
   )
 }
 

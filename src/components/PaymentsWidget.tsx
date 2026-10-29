@@ -14,6 +14,12 @@ const LINE = {
 
 const PROCEDURE = '97163'
 
+export const PAYMENT_RECORDS = [
+  { label: 'Primary', kind: 'Payer' as const, ...LINE },
+  { label: 'Total', kind: 'Payer' as const, ...LINE },
+  { label: PROCEDURE, kind: 'Procedure' as const, ...LINE },
+]
+
 function Icon({ src, size = 16 }: { src: string; size?: number }) {
   return <img src={src} alt="" width={size} height={size} draggable={false} />
 }
@@ -63,16 +69,34 @@ function Chevron({
   )
 }
 
-export function PaymentsWidget({ hideHeader = false }: { hideHeader?: boolean }) {
+export function PaymentsWidget({
+  hideHeader = false,
+  onOpenRecord,
+  selectable = false,
+  selectedIds = [],
+  onSelectedChange,
+}: {
+  hideHeader?: boolean
+  /** When set, a row opens this handler instead of the shared side drawer. */
+  onOpenRecord?: (index: number) => void
+  selectable?: boolean
+  selectedIds?: string[]
+  onSelectedChange?: (ids: string[]) => void
+}) {
   const [primaryOpen, setPrimaryOpen] = useState(false)
   const [proceduresOpen, setProceduresOpen] = useState(true)
   const { view, openSide } = useWidgetView()
   const { open, contentId, toggle, collapsible } = useClaimWidgetOpen()
   const isOpen = !collapsible || open
   const showBody = hideHeader || isOpen
-  const payerRecords = ['Primary', 'Total', PROCEDURE]
+  const payerRecords = PAYMENT_RECORDS.map((record) => record.label)
 
   function openRecord(label: string) {
+    const index = payerRecords.indexOf(label)
+    if (onOpenRecord && index >= 0) {
+      onOpenRecord(index)
+      return
+    }
     openSide('payments', 'Payments', label, payerRecords)
   }
 
@@ -83,7 +107,7 @@ export function PaymentsWidget({ hideHeader = false }: { hideHeader?: boolean })
         recordOpen
           ? 'payments-widget__payer-row widget-table-row widget-table-row--open'
           : 'payments-widget__payer-row widget-table-row'
-      }${extraClass ? ` ${extraClass}` : ''}`,
+      }${selectedIds.includes(label) ? ' vision2-row--selected' : ''}${extraClass ? ` ${extraClass}` : ''}`,
       tabIndex: 0,
       role: 'button' as const,
       'aria-current': recordOpen ? ('true' as const) : undefined,
@@ -96,6 +120,25 @@ export function PaymentsWidget({ hideHeader = false }: { hideHeader?: boolean })
         }
       },
     }
+  }
+
+  function SelectCell({ label }: { label: string }) {
+    const on = selectedIds.includes(label)
+    return (
+      <td className="submissions-widget__td submissions-widget__td--select">
+        <button
+          type="button"
+          className={on ? 'vision2-check vision2-check--on' : 'vision2-check'}
+          aria-label={on ? `Deselect payment ${label}` : `Select payment ${label}`}
+          aria-pressed={on}
+          onClick={(event) => {
+            event.stopPropagation()
+            const next = on ? selectedIds.filter((item) => item !== label) : [...selectedIds, label]
+            onSelectedChange?.(next)
+          }}
+        />
+      </td>
+    )
   }
 
   return (
@@ -126,6 +169,11 @@ export function PaymentsWidget({ hideHeader = false }: { hideHeader?: boolean })
               <table className="payments-widget__payer-table">
                 <thead>
                   <tr>
+                    {selectable ? (
+                      <th className="submissions-widget__th submissions-widget__th--select" scope="col">
+                        <span className="visually-hidden">Select</span>
+                      </th>
+                    ) : null}
                     <th className="payments-widget__th payments-widget__th--toggle" scope="col">
                       <span className="sr-only">Expand</span>
                     </th>
@@ -139,6 +187,7 @@ export function PaymentsWidget({ hideHeader = false }: { hideHeader?: boolean })
                 </thead>
                 <tbody>
                   <tr {...rowProps('Primary')}>
+                    {selectable ? <SelectCell label="Primary" /> : null}
                     <td className="payments-widget__td payments-widget__td--toggle">
                       <Chevron
                         open={primaryOpen}
@@ -155,6 +204,7 @@ export function PaymentsWidget({ hideHeader = false }: { hideHeader?: boolean })
                     <MoneyCells />
                   </tr>
                   <tr {...rowProps('Total', 'payments-widget__payer-row--total')}>
+                    {selectable ? <SelectCell label="Total" /> : null}
                     <td className="payments-widget__td payments-widget__td--toggle" />
                     <td className="payments-widget__td payments-widget__td--strong">Total</td>
                     <MoneyCells strong />
@@ -170,6 +220,11 @@ export function PaymentsWidget({ hideHeader = false }: { hideHeader?: boolean })
               <table className="payments-widget__payer-table">
                 <thead>
                   <tr>
+                    {selectable ? (
+                      <th className="submissions-widget__th submissions-widget__th--select" scope="col">
+                        <span className="visually-hidden">Select</span>
+                      </th>
+                    ) : null}
                     <th className="payments-widget__th payments-widget__th--toggle" scope="col">
                       <span className="sr-only">Expand</span>
                     </th>
@@ -183,6 +238,7 @@ export function PaymentsWidget({ hideHeader = false }: { hideHeader?: boolean })
                 </thead>
                 <tbody>
                   <tr className="payments-widget__group">
+                    {selectable ? <td className="submissions-widget__td submissions-widget__td--select" /> : null}
                     <td className="payments-widget__td payments-widget__td--toggle">
                       <Chevron
                         open={proceduresOpen}
@@ -203,6 +259,7 @@ export function PaymentsWidget({ hideHeader = false }: { hideHeader?: boolean })
                   </tr>
                   {proceduresOpen ? (
                     <tr {...rowProps(PROCEDURE)}>
+                      {selectable ? <SelectCell label={PROCEDURE} /> : null}
                       <td className="payments-widget__td payments-widget__td--toggle">
                         <Icon src={paymentsChevronRight} size={12} />
                       </td>

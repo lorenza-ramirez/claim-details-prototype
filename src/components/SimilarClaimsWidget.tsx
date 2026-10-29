@@ -64,10 +64,29 @@ const GROUPS: SimilarGroup[] = [
   },
 ]
 
-export function SimilarClaimsWidget() {
+export const SIMILAR_CLAIM_ROWS = GROUPS.flatMap((group) =>
+  group.claims.map((claim) => ({
+    ...claim,
+    status: group.label,
+    stage: 'Payer 1',
+  })),
+)
+
+export function SimilarClaimsWidget({
+  onOpenRecord,
+  selectedIds,
+  onSelectedChange,
+}: {
+  onOpenRecord?: (index: number) => void
+  selectedIds?: string[]
+  onSelectedChange?: (ids: string[]) => void
+}) {
   const [filters, setFilters] = useState(FILTERS)
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({ errors: true })
-  const [checked, setChecked] = useState<Record<string, boolean>>({})
+  const [localChecked, setLocalChecked] = useState<Record<string, boolean>>({})
+  const checked = selectedIds
+    ? Object.fromEntries(selectedIds.map((id) => [id, true]))
+    : localChecked
 
   const visibleIds = GROUPS.flatMap((group) => (openGroups[group.id] ? group.claims.map((claim) => claim.id) : []))
   const allChecked = visibleIds.length > 0 && visibleIds.every((id) => checked[id])
@@ -76,11 +95,18 @@ export function SimilarClaimsWidget() {
     setOpenGroups((current) => ({ ...current, [id]: !current[id] }))
   }
 
+  function setChecked(next: Record<string, boolean>) {
+    if (onSelectedChange) {
+      onSelectedChange(Object.entries(next).flatMap(([id, on]) => (on ? [id] : [])))
+      return
+    }
+    setLocalChecked(next)
+  }
+
   function toggleAll(next: boolean) {
-    setChecked((current) => {
-      const updated = { ...current }
-      for (const id of visibleIds) updated[id] = next
-      return updated
+    setChecked({
+      ...(selectedIds ? Object.fromEntries(selectedIds.map((id) => [id, true])) : localChecked),
+      ...Object.fromEntries(visibleIds.map((id) => [id, next])),
     })
   }
 
@@ -151,14 +177,17 @@ export function SimilarClaimsWidget() {
           <tbody>
             {GROUPS.map((group) => {
               const open = Boolean(openGroups[group.id])
+              const start = GROUPS.slice(0, GROUPS.indexOf(group)).reduce((sum, item) => sum + item.claims.length, 0)
               return (
                 <GroupRows
                   key={group.id}
                   group={group}
                   open={open}
+                  start={start}
                   checked={checked}
+                  onOpenRecord={onOpenRecord}
                   onToggle={() => toggleGroup(group.id)}
-                  onCheck={(id, next) => setChecked((current) => ({ ...current, [id]: next }))}
+                  onCheck={(id, next) => setChecked({ ...checked, [id]: next })}
                 />
               )
             })}
@@ -172,13 +201,17 @@ export function SimilarClaimsWidget() {
 function GroupRows({
   group,
   open,
+  start,
   checked,
+  onOpenRecord,
   onToggle,
   onCheck,
 }: {
   group: SimilarGroup
   open: boolean
+  start: number
   checked: Record<string, boolean>
+  onOpenRecord?: (index: number) => void
   onToggle: () => void
   onCheck: (id: string, next: boolean) => void
 }) {
@@ -213,14 +246,32 @@ function GroupRows({
         </td>
       </tr>
       {open
-        ? group.claims.map((claim) => (
-            <tr key={claim.id} className="similar-claims__row">
+        ? group.claims.map((claim, index) => (
+            <tr
+              key={claim.id}
+              className={onOpenRecord ? 'similar-claims__row widget-table-row' : 'similar-claims__row'}
+              tabIndex={onOpenRecord ? 0 : undefined}
+              role={onOpenRecord ? 'button' : undefined}
+              aria-label={onOpenRecord ? `Open similar claim ${claim.id}` : undefined}
+              onClick={onOpenRecord ? () => onOpenRecord(start + index) : undefined}
+              onKeyDown={
+                onOpenRecord
+                  ? (event) => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault()
+                        onOpenRecord(start + index)
+                      }
+                    }
+                  : undefined
+              }
+            >
               <td className="similar-claims__td similar-claims__td--check">
                 <input
                   type="checkbox"
                   className="similar-claims__check"
                   aria-label={`Select claim ${claim.id}`}
                   checked={Boolean(checked[claim.id])}
+                  onClick={(event) => event.stopPropagation()}
                   onChange={(event) => onCheck(claim.id, event.target.checked)}
                 />
               </td>

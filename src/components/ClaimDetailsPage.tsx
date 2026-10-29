@@ -10,9 +10,7 @@ import {
   home,
   keyboardArrowDown,
   keyboardArrowDown1,
-  keyboardArrowDown2,
   keyboardArrowDown3,
-  keyboardArrowUp,
   leftPanelClose,
   link,
   logo,
@@ -377,8 +375,6 @@ function ClaimPageHeader({
   claimId,
   claimPosition,
   claimCount,
-  onNextClaim,
-  onPreviousClaim,
   layoutMenu,
 }: {
   version: ClaimVersion
@@ -390,8 +386,6 @@ function ClaimPageHeader({
   claimId: string
   claimPosition: number
   claimCount: number
-  onNextClaim: () => void
-  onPreviousClaim: () => void
   layoutMenu?: ReactNode
 }) {
   return (
@@ -430,28 +424,6 @@ function ClaimPageHeader({
       <div className="claim-header__right">
         {layoutMenu}
         <div className="page-controls">
-          <button
-            type="button"
-            className="icon-btn"
-            aria-label="Next claim"
-            aria-keyshortcuts="J"
-            title="Next claim (J)"
-            disabled={claimPosition >= claimCount}
-            onClick={onNextClaim}
-          >
-            <Icon src={keyboardArrowDown2} size={18} />
-          </button>
-          <button
-            type="button"
-            className="icon-btn"
-            aria-label="Previous claim"
-            aria-keyshortcuts="K"
-            title="Previous claim (K)"
-            disabled={claimPosition <= 1}
-            onClick={onPreviousClaim}
-          >
-            <Icon src={keyboardArrowUp} size={18} />
-          </button>
           <div
             className="page-index"
             role="status"
@@ -1105,8 +1077,6 @@ function ClaimDetailsPageInner({
                 claimId={claim.id}
                 claimPosition={claimIndex + 1}
                 claimCount={CLAIM_QUEUE.length}
-                onNextClaim={() => goToClaim(claimIndex + 1)}
-                onPreviousClaim={() => goToClaim(claimIndex - 1)}
                 layoutMenu={layoutMenu}
               />
               <div className="canvas-body">
