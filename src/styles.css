@@ -1,0 +1,18 @@
+/* Page background only. Everything else is styled by DS3.0 components. */
+body {
+  margin: 0;
+  background: var(--color-bg-solid-1);
+}
+
+/*
+  Prototype chrome, not part of the design: keeps the direction switcher
+  pinned to the bottom of the screen. This is the only place fixed values
+  are allowed.
+*/
+.direction-switcher {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+}
