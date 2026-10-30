@@ -1,13 +1,14 @@
-import { useState, type DragEvent, type ReactNode } from "react";
-import { Card, Chip, Disclosure, Divider, Grid, Icon, IconButton, Sidebar, Stack, Tag, Typography } from "@getathelas/ui";
+import { useEffect, useRef, useState, type DragEvent, type ReactNode } from "react";
+import { Button, Card, Disclosure, Divider, Grid, Icon, IconButton, Sidebar, Stack, Typography } from "@getathelas/ui";
+import { TruncatedChip, TruncatedTag } from "../../components/not-in-ds/TruncatedChip";
 import {
   ATTACHMENTS,
-  CLAIM_PROPERTIES,
-  CLAIM_PROPERTIES_AFTER_TAGS,
+  CLAIM_ID,
+  claimProperties,
   CLAIM_QUEUE,
   INITIAL_SUBMISSION,
 } from "../../mock/claim";
-import { SOURCES, type SourceId } from "./sources";
+import { ActivityTimeline, RecordDetail, SELECTABLE_SOURCES, SOURCES, SourceTable, sourceInfo, type ActivityChoice, type ActivityNote, type RecordRef, type SourceId } from "./sources";
 
 // Fills the width of its ResizablePanel and scrolls on its own.
 function PanelScroll({ children }: { children: ReactNode }) {
@@ -45,14 +46,18 @@ export function QueuePanel({ activeId, onSelect }: { activeId: string; onSelect:
 
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <Stack direction="vertical" gap={0.5} paddingHorizontal={2} paddingVertical={1.5}>
-      <Typography variant="label-s" color="fg-secondary">
-        {label}
-      </Typography>
-      <Stack direction="horizontal" wrap="wrap" gap={2} align="center">
-        {children}
+    <div style={{ minWidth: 0 }}>
+      <Stack direction="vertical" gap={0.5} paddingHorizontal={2} paddingVertical={1.5}>
+        <span style={{ color: "#666666" }}>
+          <Typography variant="label-s">{label}</Typography>
+        </span>
+        <div style={{ maxWidth: "100%", minWidth: 0 }}>
+          <Stack direction="horizontal" wrap="wrap" gap={2} align="center">
+            {children}
+          </Stack>
+        </div>
       </Stack>
-    </Stack>
+    </div>
   );
 }
 
@@ -73,6 +78,8 @@ type PropertiesProps = {
   onDragEnd: () => void;
   onOpenLastSubmission: () => void;
   onOpenAttachment: (id: string) => void;
+  deferred?: boolean;
+  claimId?: string;
 };
 
 export function PropertiesPanel({
@@ -82,27 +89,31 @@ export function PropertiesPanel({
   onDragEnd,
   onOpenLastSubmission,
   onOpenAttachment,
+  deferred = false,
+  claimId = CLAIM_ID,
 }: PropertiesProps) {
   const [tags, setTags] = useState<string[]>(["Label"]);
+  const { properties, afterTags } = claimProperties(claimId);
   const clinicalNote = ATTACHMENTS.find((item) => item.id === "clinical-note");
 
   return (
     <PanelFrame>
-      <Divider orientation="vertical" />
       <PanelScroll>
         <Stack direction="vertical" padding={1.5} gap={2}>
           <Disclosure header="Properties" size="sm" defaultOpen>
             <Grid columns={2} gap={0}>
-              {CLAIM_PROPERTIES.map((item) => (
+              {properties.map((item) => (
                 <Field key={item.label} label={item.label}>
-                  <Tag color={item.color} size="sm" label={item.value} />
+                  <TruncatedTag
+                    color={item.label === "Status" && deferred ? "violet" : item.color}
+                    label={item.label === "Status" && deferred ? "Deferred" : item.value}
+                  />
                 </Field>
               ))}
               <Field label="Tags">
                 {tags.map((tag, index) => (
-                  <Chip
+                  <TruncatedChip
                     key={`${tag}-${index}`}
-                    size="sm"
                     icon="sell"
                     label={tag}
                     removable
@@ -117,9 +128,9 @@ export function PropertiesPanel({
                   onClick={() => setTags((current) => [...current, `Label ${current.length + 1}`])}
                 />
               </Field>
-              {CLAIM_PROPERTIES_AFTER_TAGS.map((item) => (
+              {afterTags.map((item) => (
                 <Field key={item.label} label={item.label}>
-                  <Tag color="neutral" size="sm" label={item.value} />
+                  <TruncatedTag color="neutral" label={item.value} />
                 </Field>
               ))}
             </Grid>
@@ -129,6 +140,11 @@ export function PropertiesPanel({
 
           <Stack direction="vertical" gap={1}>
             <SectionLabel>Sources</SectionLabel>
+            <Stack paddingHorizontal={2}>
+              <Typography variant="supportive" color="fg-tertiary">
+                Drag and drop a source into the chat.
+              </Typography>
+            </Stack>
             <Sidebar.Menu>
               {SOURCES.map((source) => (
                 <Sidebar.Item
@@ -189,5 +205,188 @@ export function PropertiesPanel({
         </Stack>
       </PanelScroll>
     </PanelFrame>
+  );
+}
+
+const TABLE_SOURCES = new Set<SourceId>(["submissions", "remittances", "payments", "attachments", "similar-claims"]);
+
+// The right menu, collapsed to icons, once one source is open.
+export function SourceRail({
+  active,
+  propertiesActive,
+  onSelect,
+  onShowProperties,
+  onClose,
+  onDragSource,
+  onDragEnd,
+}: {
+  active: SourceId | null;
+  propertiesActive: boolean;
+  onSelect: (source: SourceId) => void;
+  onShowProperties: () => void;
+  onClose: () => void;
+  onDragSource: (event: DragEvent, source: SourceId) => void;
+  onDragEnd: () => void;
+}) {
+  return (
+    <div
+      style={{
+        height: "100%",
+        flexShrink: 0,
+        borderLeft: "1px solid var(--ds-color-border-subtle)",
+        borderRight: "1px solid var(--ds-color-border-subtle)",
+      }}
+    >
+      <Stack direction="vertical" align="center" gap={3} paddingHorizontal={3} paddingTop={2} paddingBottom={3}>
+        <IconButton icon="right_panel_close" size="sm" aria-label="Close panel" onClick={onClose} />
+        <div
+          style={{
+            borderRadius: "var(--ds-radius-round)",
+            outline: propertiesActive ? "2px solid var(--ds-color-border-accent-strong)" : undefined,
+            outlineOffset: "1px",
+          }}
+        >
+          <IconButton
+            icon="page_info"
+            size="sm"
+            variant={propertiesActive ? "subtle-accent" : "default"}
+            aria-label="Properties"
+            aria-pressed={propertiesActive}
+            onClick={onShowProperties}
+          />
+        </div>
+        {SOURCES.map((source) => {
+          const selected = source.id === active;
+          return (
+            <div
+              key={source.id}
+              draggable
+              title="Open, or drag into the chat"
+              onDragStart={(event) => onDragSource(event, source.id)}
+              onDragEnd={onDragEnd}
+              style={{
+                borderRadius: "var(--ds-radius-round)",
+                outline: selected ? "2px solid var(--ds-color-border-accent-strong)" : undefined,
+                outlineOffset: "1px",
+              }}
+            >
+              <IconButton
+                icon={source.icon}
+                size="sm"
+                variant={selected ? "subtle-accent" : "default"}
+                aria-label={source.label}
+                aria-pressed={selected}
+                onClick={() => onSelect(source.id)}
+              />
+            </div>
+          );
+        })}
+      </Stack>
+    </div>
+  );
+}
+
+export function ActivityPanel({
+  notes,
+  selectedId,
+  onSelect,
+  onEditNote,
+  onDeleteNote,
+}: {
+  notes: ActivityNote[];
+  selectedId?: string | null;
+  onSelect?: (item: ActivityChoice) => void;
+  onEditNote: (id: string, text: string) => void;
+  onDeleteNote: (id: string) => void;
+}) {
+  const latestNote = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    latestNote.current?.scrollIntoView({ block: "end" });
+  }, [notes.length]);
+
+  return (
+    <PanelFrame>
+      <PanelScroll>
+        <Stack direction="vertical" gap={3} padding={3}>
+          <ActivityTimeline
+            notes={notes}
+            selectedId={selectedId}
+            onSelect={onSelect}
+            onEditNote={onEditNote}
+            onDeleteNote={onDeleteNote}
+          />
+          <div ref={latestNote} />
+        </Stack>
+      </PanelScroll>
+    </PanelFrame>
+  );
+}
+
+export function SourceDetail({
+  source,
+  record,
+  section,
+  focus,
+  onOpenRecord,
+  onBack,
+  onAppeal,
+  selectedIds,
+  onToggleSelected,
+}: {
+  source: SourceId;
+  record?: RecordRef;
+  section?: "diagnosis";
+  focus?: number;
+  onOpenRecord: (record: RecordRef) => void;
+  onBack: () => void;
+  onAppeal: (record: RecordRef) => void;
+  selectedIds: string[];
+  onToggleSelected: (record: RecordRef) => void;
+}) {
+  const info = sourceInfo(source);
+  const showTable = TABLE_SOURCES.has(source) && !record;
+  const scroller = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (section !== "diagnosis" || focus == null) return;
+    const container = scroller.current;
+    const target = container?.querySelector("[data-section='diagnosis']");
+    if (!container || !(target instanceof HTMLElement)) return;
+    const top = target.getBoundingClientRect().top - container.getBoundingClientRect().top + container.scrollTop;
+    container.scrollTo({ top, behavior: "smooth" });
+  }, [section, focus]);
+
+  return (
+    <div ref={scroller} style={{ height: "100%", overflowY: "auto" }}>
+      <Stack direction="vertical" gap={2} padding={3}>
+        {record && source !== "claim-details" ? (
+          <Stack direction="horizontal">
+            <Button variant="tertiary" size="sm" icon="arrow_back" onClick={onBack}>
+              Back to {info.label.toLowerCase()}
+            </Button>
+          </Stack>
+        ) : (
+          <Stack direction="horizontal" align="center" gap={2}>
+            <Typography variant="label-s" color="fg-secondary">
+              {info.label}
+            </Typography>
+            <Stack.Item grow />
+            {showTable ? <IconButton icon="filter_list" size="sm" aria-label={`Filter ${info.label.toLowerCase()}`} /> : null}
+          </Stack>
+        )}
+        {record ? (
+          <RecordDetail record={record} />
+        ) : (
+          <SourceTable
+            source={source}
+            onOpenRecord={onOpenRecord}
+            selectedIds={selectedIds}
+            onToggleSelected={SELECTABLE_SOURCES.has(source) ? onToggleSelected : undefined}
+            onAppeal={source === "submissions" ? onAppeal : undefined}
+          />
+        )}
+      </Stack>
+    </div>
   );
 }

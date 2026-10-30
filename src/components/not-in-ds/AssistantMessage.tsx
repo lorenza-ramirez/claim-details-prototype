@@ -6,7 +6,9 @@ import { Card, Icon, Stack, Typography } from "@getathelas/ui";
 export function AssistantMessage({ children }: { children: ReactNode }) {
   return (
     <Stack direction="horizontal" align="end" gap={3}>
-      <Icon icon="athelas_ai" size={2.25} aria-hidden />
+      <span style={{ color: "var(--ds-color-blue-500)", display: "inline-flex" }}>
+        <Icon icon="athelas_ai" size={2.25} aria-hidden />
+      </span>
       <div style={{ flex: 1, minWidth: 0 }}>{children}</div>
     </Stack>
   );
@@ -18,7 +20,7 @@ export function UserMessage({ children, attachments }: { children?: ReactNode; a
       <Typography variant="label-xs" color="fg-tertiary">
         You
       </Typography>
-      <div style={{ maxWidth: "80%" }}>
+      <div style={{ maxWidth: "80%", minWidth: 0 }}>
         <Card padding="sm" radius="lg">
           <Stack direction="vertical" gap={2}>
             {attachments}

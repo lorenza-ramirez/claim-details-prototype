@@ -1,10 +1,27 @@
-import { Checkbox, Stack, TablePrimitives, Tag, Typography } from "@getathelas/ui";
+import { useState, type ComponentProps } from "react";
+import {
+  ActivityFeed,
+  Avatar,
+  Button,
+  Checkbox,
+  Grid,
+  Icon,
+  IconButton,
+  Menu,
+  Stack,
+  TablePrimitives,
+  Tag,
+  Textarea,
+  Typography,
+} from "@getathelas/ui";
 import type { IconProps } from "@getathelas/ui";
 import {
   ACTIVITY,
   ATTACHMENTS,
+  CLAIM_DETAIL_GROUPS,
   DIAGNOSES,
   PAYMENTS,
+  PROCEDURES,
   REMITTANCES,
   SIMILAR_CLAIMS,
   SUBMISSIONS,
@@ -113,6 +130,7 @@ type TableProps = {
   onOpenRecord: (record: RecordRef) => void;
   selectedIds?: string[];
   onToggleSelected?: (record: RecordRef) => void;
+  onAppeal?: (record: RecordRef) => void;
 };
 
 function SelectCell({
@@ -135,8 +153,8 @@ function SelectCell({
   );
 }
 
-// The list view for a source: shown in chat widgets and in the source drawer.
-export function SourceTable({ source, onOpenRecord, selectedIds, onToggleSelected }: TableProps) {
+// The list view for a source: shown in chat widgets and in the source panel.
+export function SourceTable({ source, onOpenRecord, selectedIds, onToggleSelected, onAppeal }: TableProps) {
   const selectable = SELECTABLE_SOURCES.has(source) && onToggleSelected != null;
 
   if (source === "claim-details") return <ClaimDetails />;
@@ -151,7 +169,7 @@ export function SourceTable({ source, onOpenRecord, selectedIds, onToggleSelecte
 
   if (source === "submissions") {
     return (
-      <TablePrimitives columns={`${selectable ? "max-content " : ""}1fr 1fr 1fr max-content`} size="compact" variant="fullPage">
+      <TablePrimitives columns={`${selectable ? "max-content " : ""}max-content max-content minmax(0,1fr) max-content${onAppeal ? " max-content" : ""}`} size="compact" variant="fullPage">
         <TablePrimitives.Header>
           <TablePrimitives.Row>
             {selectable ? <TablePrimitives.Head aria-label="Select" /> : null}
@@ -159,6 +177,7 @@ export function SourceTable({ source, onOpenRecord, selectedIds, onToggleSelecte
             <TablePrimitives.Head>Submitted</TablePrimitives.Head>
             <TablePrimitives.Head>Payer</TablePrimitives.Head>
             <TablePrimitives.Head>Status</TablePrimitives.Head>
+            {onAppeal ? <TablePrimitives.Head aria-label="Actions" /> : null}
           </TablePrimitives.Row>
         </TablePrimitives.Header>
         <TablePrimitives.Body>
@@ -173,6 +192,13 @@ export function SourceTable({ source, onOpenRecord, selectedIds, onToggleSelecte
                 <TablePrimitives.Cell>
                   <Tag color="red" size="sm" icon="block" label={row.statusLabel} />
                 </TablePrimitives.Cell>
+                {onAppeal ? (
+                  <TablePrimitives.Cell onClick={(event) => event.stopPropagation()}>
+                    <Button variant="tertiary" size="sm" onClick={() => onAppeal(record)}>
+                      Appeal
+                    </Button>
+                  </TablePrimitives.Cell>
+                ) : null}
               </TablePrimitives.Row>
             );
           })}
@@ -398,37 +424,341 @@ export function DiagnosisCodes() {
   );
 }
 
-function ClaimDetails() {
+function DetailGroup({ title, fields }: { title: string; fields: [string, string][] }) {
   return (
-    <Stack direction="vertical" gap={5}>
-      <Stack direction="vertical" gap={3}>
-        <Typography variant="label-m">Claim</Typography>
-        <Fact label="Billing provider" value="Rock Valley Physical Therapy and Therapy Services" />
-        <Fact label="Payer" value="Iowa Blue Shield" />
-        <Fact label="Date of service" value="10/07/2026" />
-        <Fact label="Total charges" value="$386.00" />
-      </Stack>
-      <Stack direction="vertical" gap={3}>
-        <Typography variant="label-m">Diagnosis codes</Typography>
-        <DiagnosisCodes />
-      </Stack>
+    <Stack direction="vertical" gap={3}>
+      <Typography variant="label-m">{title}</Typography>
+      <Grid columns={2} gap={3}>
+        {fields.map(([label, value]) => (
+          <Fact key={label} label={label} value={value} />
+        ))}
+      </Grid>
     </Stack>
   );
 }
 
-function ActivityList() {
+function ClaimDetails() {
+  const additional = CLAIM_DETAIL_GROUPS.find((group) => group.title === "Additional details");
+  const groups = CLAIM_DETAIL_GROUPS.filter((group) => group.title !== "Additional details");
+
   return (
-    <Stack direction="vertical" gap={3}>
-      {ACTIVITY.map((event) => (
-        <Stack key={event.id} direction="horizontal" gap={3} align="start">
-          <Stack.Item grow>
-            <Typography variant="body-s">{event.text}</Typography>
-          </Stack.Item>
-          <Typography variant="supportive" color="fg-tertiary">
-            {event.time}
-          </Typography>
-        </Stack>
+    <Stack direction="vertical" gap={5}>
+      {groups.map((group) => (
+        <DetailGroup key={group.title} title={group.title} fields={group.fields} />
       ))}
+      <div data-section="diagnosis">
+        <Stack direction="vertical" gap={3}>
+          <Typography variant="label-m">Diagnosis codes</Typography>
+          <DiagnosisCodes />
+        </Stack>
+      </div>
+      <Stack direction="vertical" gap={3}>
+        <Typography variant="label-m">Procedures</Typography>
+        <TablePrimitives columns="max-content 1fr max-content max-content" size="compact" variant="fullPage">
+          <TablePrimitives.Header>
+            <TablePrimitives.Row>
+              <TablePrimitives.Head>Code</TablePrimitives.Head>
+              <TablePrimitives.Head>Description</TablePrimitives.Head>
+              <TablePrimitives.Head>Modifiers</TablePrimitives.Head>
+              <TablePrimitives.Head>Charge</TablePrimitives.Head>
+            </TablePrimitives.Row>
+          </TablePrimitives.Header>
+          <TablePrimitives.Body>
+            {PROCEDURES.map((row) => (
+              <TablePrimitives.Row key={row.code}>
+                <TablePrimitives.Cell>
+                  <Typography variant="label-s" color="fg-accent">
+                    {row.code}
+                  </Typography>
+                </TablePrimitives.Cell>
+                <TablePrimitives.Cell>{row.description}</TablePrimitives.Cell>
+                <TablePrimitives.Cell>{row.modifiers}</TablePrimitives.Cell>
+                <TablePrimitives.Cell>{row.charge}</TablePrimitives.Cell>
+              </TablePrimitives.Row>
+            ))}
+          </TablePrimitives.Body>
+        </TablePrimitives>
+      </Stack>
+      {additional ? <DetailGroup title={additional.title} fields={additional.fields} /> : null}
     </Stack>
   );
+}
+
+export type ActivityNote = { id: string; name: string; initials: string; text: string; time: string };
+
+export type ActivityChoice = { id: string; label: string; fact: string; icon: IconName };
+
+function EditableNote({
+  note,
+  onEdit,
+  onDelete,
+}: {
+  note: ActivityNote;
+  onEdit: (id: string, text: string) => void;
+  onDelete: (id: string) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(note.text);
+
+  if (editing) {
+    return (
+      <div onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()}>
+        <Stack direction="vertical" gap={2}>
+          <Textarea
+            aria-label="Edit note"
+            value={draft}
+            onChange={(event) => setDraft(event.target.value)}
+            autoFocus
+          />
+          <Stack direction="horizontal" gap={1}>
+            <Button
+              variant="tertiary"
+              size="sm"
+              onClick={() => {
+                setDraft(note.text);
+                setEditing(false);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              disabled={!draft.trim()}
+              onClick={() => {
+                onEdit(note.id, draft.trim());
+                setEditing(false);
+              }}
+            >
+              Save note
+            </Button>
+          </Stack>
+        </Stack>
+      </div>
+    );
+  }
+
+  return (
+    <Stack direction="vertical" gap={1}>
+      <ActivityFeed.Comment>{note.text}</ActivityFeed.Comment>
+      <div onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()}>
+        <Menu>
+          <Menu.Trigger
+            render={<IconButton icon="more_horiz" size="xs" variant="default" aria-label={`Actions for note from ${note.name}`} />}
+          />
+          <Menu.Content>
+            <Menu.Item
+              onClick={() => {
+                setDraft(note.text);
+                setEditing(true);
+              }}
+            >
+              <Menu.Item.LeftIcon icon="edit" />
+              <Menu.Item.Label>Edit note</Menu.Item.Label>
+            </Menu.Item>
+            <Menu.Item danger onClick={() => onDelete(note.id)}>
+              <Menu.Item.LeftIcon icon="delete" />
+              <Menu.Item.Label>Delete note</Menu.Item.Label>
+            </Menu.Item>
+          </Menu.Content>
+        </Menu>
+      </div>
+    </Stack>
+  );
+}
+
+function ActivityChoiceItem({
+  id,
+  label,
+  fact,
+  chipIcon,
+  selectedId,
+  onSelect,
+  ...props
+}: {
+  id: string;
+  label: string;
+  fact: string;
+  chipIcon: IconName;
+  selectedId?: string | null;
+  onSelect?: (item: ActivityChoice) => void;
+} & Omit<ComponentProps<typeof ActivityFeed.Item>, "onSelect">) {
+  const selected = selectedId === id;
+  return (
+    <div
+      role={onSelect ? "button" : undefined}
+      tabIndex={onSelect ? 0 : undefined}
+      aria-pressed={onSelect ? selected : undefined}
+      aria-label={onSelect ? `Select ${label}` : undefined}
+      onClick={onSelect ? () => onSelect({ id, label, fact, icon: chipIcon }) : undefined}
+      onKeyDown={
+        onSelect
+          ? (event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                onSelect({ id, label, fact, icon: chipIcon });
+              }
+            }
+          : undefined
+      }
+      style={
+        onSelect
+          ? {
+              width: "100%",
+              cursor: "pointer",
+              borderRadius: "var(--ds-radius-semi-soft)",
+              outline: selected ? "2px solid var(--ds-color-border-accent-strong)" : undefined,
+            }
+          : undefined
+      }
+    >
+      <ActivityFeed.Item {...props} />
+    </div>
+  );
+}
+
+export function ActivityTimeline({
+  notes = [],
+  selectedId = null,
+  onSelect,
+  onEditNote,
+  onDeleteNote,
+}: {
+  notes?: ActivityNote[];
+  selectedId?: string | null;
+  onSelect?: (item: ActivityChoice) => void;
+  onEditNote?: (id: string, text: string) => void;
+  onDeleteNote?: (id: string) => void;
+}) {
+  const choice = { selectedId, onSelect };
+  return (
+    <ActivityFeed>
+      <ActivityChoiceItem
+        {...choice}
+        id="appointment"
+        label="Appointment occurred"
+        fact="Appointment occurred, 3 weeks ago."
+        chipIcon="event"
+        icon={<Icon icon="event" size={1} />}
+        subject="Appointment"
+        action="occurred"
+        timestamp="3 weeks ago"
+      />
+      <ActivityChoiceItem
+        {...choice}
+        id="record"
+        label="Medical record attached"
+        fact="Medical record ClinicalNote.pdf was attached to the claim, 3 weeks ago."
+        chipIcon="attach_file"
+        icon={<Icon icon="attach_file" size={1} />}
+        subject="Medical record"
+        action="attached to claim"
+        timestamp="3 weeks ago"
+        content={<ActivityFeed.FileAttachment name="ClinicalNote.pdf" />}
+      />
+      <ActivityChoiceItem
+        {...choice}
+        id="stage"
+        label="Stage set to Payer 1"
+        fact="Claim stage was set to Payer 1, 3 weeks ago."
+        chipIcon="flag"
+        icon={<Icon icon="flag" size={1} />}
+        subject={
+          <>
+            Claim stage set to <Tag color="neutral" size="sm" label="Payer 1" />
+          </>
+        }
+        action=""
+        timestamp="3 weeks ago"
+      />
+      <ActivityChoiceItem
+        {...choice}
+        id="submitted"
+        label="Submitted for $386.00"
+        fact="Claim submitted for $386.00 to Iowa Blue Shield, 3 weeks ago."
+        chipIcon="send"
+        icon={<Icon icon="send" size={1} />}
+        subject="Claim submitted"
+        action="for $386.00 to Iowa Blue Shield"
+        timestamp="3 weeks ago"
+      />
+      <ActivityChoiceItem
+        {...choice}
+        id="remit"
+        label="Remittance received"
+        fact="Iowa Blue Shield remittance received: $0.00 paid (CO-16, M76), 2 weeks ago."
+        chipIcon="request_quote"
+        icon={<Icon icon="request_quote" size={1} />}
+        subject="Iowa Blue Shield"
+        action="remittance received: $0.00 paid (CO-16, M76)"
+        timestamp="2 weeks ago"
+      />
+      <ActivityChoiceItem
+        {...choice}
+        id="status"
+        label="Status set to Full denials"
+        fact="Claim status was set to Full denials, 2 weeks ago."
+        chipIcon="block"
+        icon={<Icon icon="block" size={1} />}
+        subject={
+          <>
+            Claim status set to <Tag color="red" size="sm" icon="block" label="Full denials" />
+          </>
+        }
+        action=""
+        timestamp="2 weeks ago"
+      />
+      <ActivityChoiceItem
+        {...choice}
+        id="note-sam"
+        label="Note from Sam Patel"
+        fact="Sam Patel, 2 days ago: The diagnosis looks incomplete. Preparing a correction."
+        chipIcon="edit_note"
+        icon={<Avatar label="SP" size="xs" />}
+        subject="Sam Patel"
+        action="left a note"
+        timestamp="2 days ago"
+        content={<ActivityFeed.Comment>The diagnosis looks incomplete. Preparing a correction.</ActivityFeed.Comment>}
+      />
+      <ActivityChoiceItem
+        {...choice}
+        id="note-riley"
+        label="Note from Riley Chen"
+        fact="Riley Chen, 1 day ago: Acknowledged. Thanks for the update."
+        chipIcon="edit_note"
+        icon={<Avatar label="RC" size="xs" />}
+        subject="Riley Chen"
+        action="left a note"
+        timestamp="1 day ago"
+        showConnector={notes.length > 0}
+        content={<ActivityFeed.Comment>Acknowledged. Thanks for the update.</ActivityFeed.Comment>}
+      />
+      {notes.map((note, index) => (
+        <ActivityChoiceItem
+          {...choice}
+          key={note.id}
+          id={note.id}
+          label={`Note from ${note.name}`}
+          fact={`${note.name}, ${note.time}: ${note.text}`}
+          chipIcon="edit_note"
+          icon={<Avatar label={note.initials} size="xs" />}
+          subject={note.name}
+          action="left a note"
+          timestamp={note.time}
+          showConnector={index < notes.length - 1}
+          content={
+            onEditNote && onDeleteNote ? (
+              <EditableNote note={note} onEdit={onEditNote} onDelete={onDeleteNote} />
+            ) : (
+              <ActivityFeed.Comment>{note.text}</ActivityFeed.Comment>
+            )
+          }
+        />
+      ))}
+    </ActivityFeed>
+  );
+}
+
+function ActivityList() {
+  return <ActivityTimeline />;
 }
