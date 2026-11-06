@@ -10,3 +10,4 @@ scripts/registry.npmrc
 .env
 .env.*
 .local-data/
+.vercel

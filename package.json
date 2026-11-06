@@ -10,7 +10,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
-    "share": "vite build && npx vercel deploy dist --prod"
+    "share": "vite build && node scripts/prepare-vercel-output.mjs && npx vercel deploy --prebuilt --prod"
   },
   "dependencies": {
     "@getathelas/tokens": "latest",

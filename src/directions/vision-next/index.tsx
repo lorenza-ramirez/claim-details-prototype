@@ -6,6 +6,7 @@ import {
   Breadcrumb,
   Button,
   Card,
+  Chip,
   DictationBadge,
   Divider,
   Drawer,
@@ -15,6 +16,7 @@ import {
   Menu,
   ResizablePanel,
   SearchButton,
+  SegmentedControl,
   Shortcut,
   Sidebar,
   Spinner,
@@ -193,6 +195,7 @@ export function VisionNext() {
   const [activeClaim, setActiveClaim] = useState(CLAIM_ID);
   const [assistantOn, setAssistantOn] = useState(true);
   const [scribeOn, setScribeOn] = useState(false);
+  const [conversationHome, setConversationHome] = useState<"claim" | "panel">("claim");
 
   const [drawer, setDrawer] = useState<DrawerView | null>(null);
   const [detail, setDetail] = useState<DetailView | null>(null);
@@ -504,6 +507,7 @@ export function VisionNext() {
         onAccept={() => approveAction(claimId)}
         onAcceptResubmit={() => approveResubmit(claimId)}
         onViewMedicalRecord={() => openRecord({ source: "attachments", id: "clinical-note" })}
+        surface={conversationHome === "panel" ? "base" : "accent"}
       />
     );
   }
@@ -573,6 +577,212 @@ export function VisionNext() {
   function endDrag() {
     dragSourceRef.current = null;
     setChatDrop(false);
+  }
+
+  function conversationColumn() {
+    return (
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          flex: 1,
+          minWidth: 0,
+          minHeight: 0,
+          outline: chatDrop ? "2px dashed var(--ds-color-border-accent-strong)" : undefined,
+          outlineOffset: "-0.5rem",
+        }}
+        onDragOver={(event) => {
+          if (!dragSourceRef.current) return;
+          event.preventDefault();
+          event.dataTransfer.dropEffect = "copy";
+          setChatDrop(true);
+        }}
+        onDragLeave={(event) => {
+          if (event.currentTarget.contains(event.relatedTarget as Node | null)) return;
+          setChatDrop(false);
+        }}
+        onDrop={(event) => {
+          event.preventDefault();
+          const source = (event.dataTransfer.getData("text/plain") || dragSourceRef.current) as SourceId | null;
+          endDrag();
+          if (source && (SOURCES.some((item) => item.id === source) || source === "activity")) addWidget(source);
+        }}
+      >
+        <div ref={chatRef} role="log" aria-label="Claim chat" style={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
+          <div style={{ display: "flex", flexDirection: "column", justifyContent: "flex-end", minHeight: "100%", maxWidth: "62.5rem", margin: "0 auto" }}>
+            <Stack direction="vertical" gap={6} paddingHorizontal={6} paddingVertical={3}>
+              <AssistantMessage>{renderSummary(CLAIM_ID)}</AssistantMessage>
+
+              {feed.map((item) => {
+                if (item.kind === "user") {
+                  return (
+                    <UserMessage
+                      key={item.id}
+                      attachments={
+                        item.chips.length ? (
+                          <div style={{ width: "100%", minWidth: 0 }}>
+                            <Stack direction="horizontal" wrap="wrap" gap={1}>
+                              {item.chips.map((chip) => (
+                                <TruncatedChip key={chip.key} icon={chip.icon} label={chip.label} />
+                              ))}
+                            </Stack>
+                          </div>
+                        ) : null
+                      }
+                    >
+                      {item.text}
+                    </UserMessage>
+                  );
+                }
+                if (item.kind === "notice") {
+                  const nextAction = item.nextActionClaimId ? summaryFor(item.nextActionClaimId).resubmit : null;
+                  return (
+                    <AssistantMessage key={item.id}>
+                      <ThreadNotice
+                        title={item.title}
+                        description={item.description}
+                        nextAction={
+                          nextAction && item.nextActionClaimId
+                            ? {
+                                title: nextAction.title,
+                                description: nextAction.why,
+                                accepted: completedActions[item.nextActionClaimId]?.resubmit ?? false,
+                                onAccept: () => approveResubmit(item.nextActionClaimId!),
+                              }
+                            : undefined
+                        }
+                      />
+                    </AssistantMessage>
+                  );
+                }
+                if (item.kind === "ask-next") {
+                  return (
+                    <AssistantMessage key={item.id}>
+                      <NextClaimPrompt
+                        claimId={item.claimId}
+                        choice={item.choice}
+                        onLoad={() => chooseNextClaim(item.id, "load")}
+                        onStay={() => chooseNextClaim(item.id, "stay")}
+                      />
+                    </AssistantMessage>
+                  );
+                }
+                if (item.kind === "claim-summary") {
+                  return <AssistantMessage key={item.id}>{renderSummary(item.claimId)}</AssistantMessage>;
+                }
+                if (item.kind === "assistant") {
+                  return (
+                    <AssistantMessage key={item.id}>
+                      <Stack direction="vertical" gap={1}>
+                        <Typography variant="label-xs" color="fg-tertiary">
+                          Athelas AI
+                        </Typography>
+                        <Typography variant="body-m">{item.text}</Typography>
+                      </Stack>
+                    </AssistantMessage>
+                  );
+                }
+                return (
+                  <SourceWidget
+                    key={item.id}
+                    source={item.source}
+                    onOpenSource={() => openSource(item.source)}
+                    onRemove={() => removeWidget(item.id)}
+                    onOpenRecord={openRecord}
+                    selectedIds={selectedIdsFor(item.source)}
+                    onToggleSelected={SELECTABLE_SOURCES.has(item.source) ? toggleSelected : undefined}
+                  />
+                );
+              })}
+              {thinking ? (
+                <AssistantMessage>
+                  <Stack direction="horizontal" align="center" gap={2}>
+                    <Spinner color="accent" />
+                    <Typography variant="body-m" color="fg-secondary">
+                      Thinking
+                    </Typography>
+                  </Stack>
+                </AssistantMessage>
+              ) : null}
+            </Stack>
+          </div>
+        </div>
+
+        <Stack paddingHorizontal={6} paddingBottom={3} paddingTop={3}>
+          <div style={{ width: "100%", maxWidth: "61rem", margin: "0 auto" }}>
+            <ChatComposer
+              inputRef={promptRef}
+              value={prompt}
+              onChange={setPrompt}
+              onSubmit={() => send()}
+              context={
+                composerContext ? (
+                  <ContextBox context={composerContext} onClear={clearContext} onRemoveChip={toggleSelected} />
+                ) : null
+              }
+            />
+          </div>
+        </Stack>
+      </div>
+    );
+  }
+
+  function propertiesColumn() {
+    return (
+      <ResizablePanel
+        key={`${conversationHome}-${activityOn ? "activity" : detail ? "source" : "properties"}`}
+        side="right"
+        open={propertiesOpen}
+        onOpenChange={setPropertiesOpen}
+        hideRailWhenCollapsed
+        defaultWidth={
+          conversationHome === "panel" ? "30rem" : activityOn || !detail ? "25.75rem" : "35.25rem"
+        }
+        minWidth={conversationHome === "panel" ? "16rem" : activityOn || !detail ? "18rem" : "24rem"}
+        maxWidth={conversationHome === "panel" ? "32rem" : "44rem"}
+      >
+        <div ref={rightColumnRef} style={{ height: "100%" }}>
+          {activityOn ? (
+            <ActivityPanel
+              notes={notes}
+              selectedId={pinnedContext?.key.startsWith("activity:") ? pinnedContext.key.slice("activity:".length) : null}
+              onSelect={selectActivity}
+              onEditNote={editNote}
+              onDeleteNote={deleteNote}
+            />
+          ) : detail ? (
+            <SourceDetail
+              source={detail.source}
+              record={detail.record}
+              section={detail.section}
+              focus={detail.focus}
+              onOpenRecord={openRecord}
+              onBack={() => setDetail((current) => (current ? { source: current.source } : current))}
+              onAppeal={(record) =>
+                toast.add({
+                  intent: "info",
+                  icon: "gavel",
+                  content: `Appeal for submission ${record.id} isn't part of this prototype yet`,
+                })
+              }
+              selectedIds={selectedIdsFor(detail.source)}
+              onToggleSelected={toggleSelected}
+            />
+          ) : (
+            <PropertiesPanel
+              activeSource={null}
+              onOpenSource={openSource}
+              onDragSource={startDrag}
+              onDragEnd={endDrag}
+              onOpenLastSubmission={() => openRecord({ source: "submissions", id: INITIAL_SUBMISSION.id })}
+              onOpenAttachment={(id) => openRecord({ source: "attachments", id })}
+              deferred={deferred}
+              claimId={activeClaim}
+            />
+          )}
+        </div>
+      </ResizablePanel>
+    );
   }
 
   return (
@@ -656,6 +866,20 @@ export function VisionNext() {
             <Breadcrumb.Item href="#">Claims</Breadcrumb.Item>
             <Breadcrumb.Page>{activeClaim}</Breadcrumb.Page>
           </Breadcrumb>
+          <SegmentedControl
+            size="sm"
+            aria-label="Conversation placement"
+            value={[conversationHome]}
+            onValueChange={(next) => {
+              const value = next[0];
+              if (value !== "claim" && value !== "panel") return;
+              setConversationHome(value);
+              if (value === "panel") setAssistantOn(true);
+            }}
+          >
+            <SegmentedControl.Button value="claim">In the claim</SegmentedControl.Button>
+            <SegmentedControl.Button value="panel">AI panel</SegmentedControl.Button>
+          </SegmentedControl>
         </AppShell.HeaderLeft>
         <AppShell.HeaderMiddle>
           <Sidebar.Item size="sm" aria-label="Notifications">
@@ -676,7 +900,7 @@ export function VisionNext() {
 
       <AppShell.Main>
         <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
-          <Stack direction="horizontal" align="center" gap={2} padding={3}>
+          <Stack direction="horizontal" align="center" gap={2} padding={3} wrap={conversationHome === "panel" ? "wrap" : undefined}>
             <IconButton
               icon="dock_to_right"
               size="sm"
@@ -889,7 +1113,7 @@ export function VisionNext() {
           </Stack>
           <Divider />
 
-          <div style={{ display: "flex", flex: 1, minHeight: 0 }}>
+          <div style={{ display: "flex", flex: 1, minHeight: 0, width: "100%" }}>
             <ResizablePanel
               side="left"
               open={queueOpen}
@@ -902,150 +1126,9 @@ export function VisionNext() {
               <QueuePanel activeId={activeClaim} onSelect={setActiveClaim} />
             </ResizablePanel>
 
-            <div
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                flex: 1,
-                minWidth: 0,
-                outline: chatDrop ? "2px dashed var(--ds-color-border-accent-strong)" : undefined,
-                outlineOffset: "-0.5rem",
-              }}
-              onDragOver={(event) => {
-                if (!dragSourceRef.current) return;
-                event.preventDefault();
-                event.dataTransfer.dropEffect = "copy";
-                setChatDrop(true);
-              }}
-              onDragLeave={(event) => {
-                if (event.currentTarget.contains(event.relatedTarget as Node | null)) return;
-                setChatDrop(false);
-              }}
-              onDrop={(event) => {
-                event.preventDefault();
-                const source = (event.dataTransfer.getData("text/plain") || dragSourceRef.current) as SourceId | null;
-                endDrag();
-                if (source && (SOURCES.some((item) => item.id === source) || source === "activity")) addWidget(source);
-              }}
-            >
-              <div ref={chatRef} role="log" aria-label="Claim chat" style={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
-                <div style={{ display: "flex", flexDirection: "column", justifyContent: "flex-end", minHeight: "100%", maxWidth: "62.5rem", margin: "0 auto" }}>
-                <Stack direction="vertical" gap={6} paddingHorizontal={6} paddingVertical={3}>
-                  <AssistantMessage>{renderSummary(CLAIM_ID)}</AssistantMessage>
+            {conversationHome === "claim" ? conversationColumn() : null}
 
-                  {feed.map((item) => {
-                    if (item.kind === "user") {
-                      return (
-                        <UserMessage
-                          key={item.id}
-                          attachments={
-                            item.chips.length ? (
-                              <div style={{ width: "100%", minWidth: 0 }}>
-                              <Stack direction="horizontal" wrap="wrap" gap={1}>
-                                {item.chips.map((chip) => (
-                                  <TruncatedChip key={chip.key} icon={chip.icon} label={chip.label} />
-                                ))}
-                              </Stack>
-                              </div>
-                            ) : null
-                          }
-                        >
-                          {item.text}
-                        </UserMessage>
-                      );
-                    }
-                    if (item.kind === "notice") {
-                      const nextAction = item.nextActionClaimId
-                        ? summaryFor(item.nextActionClaimId).resubmit
-                        : null;
-                      return (
-                        <AssistantMessage key={item.id}>
-                          <ThreadNotice
-                            title={item.title}
-                            description={item.description}
-                            nextAction={
-                              nextAction && item.nextActionClaimId
-                                ? {
-                                    title: nextAction.title,
-                                    description: nextAction.why,
-                                    accepted: completedActions[item.nextActionClaimId]?.resubmit ?? false,
-                                    onAccept: () => approveResubmit(item.nextActionClaimId!),
-                                  }
-                                : undefined
-                            }
-                          />
-                        </AssistantMessage>
-                      );
-                    }
-                    if (item.kind === "ask-next") {
-                      return (
-                        <AssistantMessage key={item.id}>
-                          <NextClaimPrompt
-                            claimId={item.claimId}
-                            choice={item.choice}
-                            onLoad={() => chooseNextClaim(item.id, "load")}
-                            onStay={() => chooseNextClaim(item.id, "stay")}
-                          />
-                        </AssistantMessage>
-                      );
-                    }
-                    if (item.kind === "claim-summary") {
-                      return <AssistantMessage key={item.id}>{renderSummary(item.claimId)}</AssistantMessage>;
-                    }
-                    if (item.kind === "assistant") {
-                      return (
-                        <AssistantMessage key={item.id}>
-                          <Stack direction="vertical" gap={1}>
-                            <Typography variant="label-xs" color="fg-tertiary">
-                              Athelas AI
-                            </Typography>
-                            <Typography variant="body-m">{item.text}</Typography>
-                          </Stack>
-                        </AssistantMessage>
-                      );
-                    }
-                    return (
-                      <SourceWidget
-                        key={item.id}
-                        source={item.source}
-                        onOpenSource={() => openSource(item.source)}
-                        onRemove={() => removeWidget(item.id)}
-                        onOpenRecord={openRecord}
-                        selectedIds={selectedIdsFor(item.source)}
-                        onToggleSelected={SELECTABLE_SOURCES.has(item.source) ? toggleSelected : undefined}
-                      />
-                    );
-                  })}
-                  {thinking ? (
-                    <AssistantMessage>
-                      <Stack direction="horizontal" align="center" gap={2}>
-                        <Spinner color="accent" />
-                        <Typography variant="body-m" color="fg-secondary">
-                          Thinking
-                        </Typography>
-                      </Stack>
-                    </AssistantMessage>
-                  ) : null}
-                </Stack>
-                </div>
-              </div>
-
-              <Stack paddingHorizontal={6} paddingBottom={3} paddingTop={3}>
-                <div style={{ width: "100%", maxWidth: "61rem", margin: "0 auto" }}>
-                  <ChatComposer
-                    inputRef={promptRef}
-                    value={prompt}
-                    onChange={setPrompt}
-                    onSubmit={() => send()}
-                    context={
-                      composerContext ? (
-                        <ContextBox context={composerContext} onClear={clearContext} onRemoveChip={toggleSelected} />
-                      ) : null
-                    }
-                  />
-                </div>
-              </Stack>
-            </div>
+            {conversationHome === "panel" ? propertiesColumn() : null}
 
             <SourceRail
               active={propertiesOpen && detail ? detail.source : null}
@@ -1063,59 +1146,10 @@ export function VisionNext() {
               }}
               onDragSource={startDrag}
               onDragEnd={endDrag}
+              flushEnd={conversationHome === "panel"}
             />
 
-            <ResizablePanel
-              key={activityOn ? "activity" : detail ? "source" : "properties"}
-              side="right"
-              open={propertiesOpen}
-              onOpenChange={setPropertiesOpen}
-              hideRailWhenCollapsed
-              defaultWidth={activityOn || !detail ? "25.75rem" : "35.25rem"}
-              minWidth={activityOn || !detail ? "18rem" : "24rem"}
-              maxWidth="44rem"
-            >
-              <div ref={rightColumnRef} style={{ height: "100%" }}>
-              {activityOn ? (
-                <ActivityPanel
-                  notes={notes}
-                  selectedId={pinnedContext?.key.startsWith("activity:") ? pinnedContext.key.slice("activity:".length) : null}
-                  onSelect={selectActivity}
-                  onEditNote={editNote}
-                  onDeleteNote={deleteNote}
-                />
-              ) : detail ? (
-                <SourceDetail
-                  source={detail.source}
-                  record={detail.record}
-                  section={detail.section}
-                  focus={detail.focus}
-                  onOpenRecord={openRecord}
-                  onBack={() => setDetail((current) => (current ? { source: current.source } : current))}
-                  onAppeal={(record) =>
-                    toast.add({
-                      intent: "info",
-                      icon: "gavel",
-                      content: `Appeal for submission ${record.id} isn't part of this prototype yet`,
-                    })
-                  }
-                  selectedIds={selectedIdsFor(detail.source)}
-                  onToggleSelected={toggleSelected}
-                />
-              ) : (
-                <PropertiesPanel
-                  activeSource={null}
-                  onOpenSource={openSource}
-                  onDragSource={startDrag}
-                  onDragEnd={endDrag}
-                  onOpenLastSubmission={() => openRecord({ source: "submissions", id: INITIAL_SUBMISSION.id })}
-                  onOpenAttachment={(id) => openRecord({ source: "attachments", id })}
-                  deferred={deferred}
-                  claimId={activeClaim}
-                />
-              )}
-              </div>
-            </ResizablePanel>
+            {conversationHome === "claim" ? propertiesColumn() : null}
           </div>
         </div>
 
@@ -1133,6 +1167,47 @@ export function VisionNext() {
           <DiagnosisCodes />
         </Drawer>
       </AppShell.Main>
+      {conversationHome === "panel" ? (
+        <AppShell.Aside>
+          <style>{`
+            [data-slot="app-shell"]:has([data-conversation-home="panel"]) [data-slot="app-shell-main"] {
+              flex: 0 0 34rem;
+              width: 34rem;
+              max-width: 42%;
+            }
+            [data-slot="app-shell"]:has([data-conversation-home="panel"]) [data-slot="app-shell-main"] + div {
+              display: flex;
+              flex: 1 1 auto;
+              min-width: 0;
+            }
+            [data-slot="app-shell"]:has([data-conversation-home="panel"]) [data-slot="app-shell-aside"] {
+              display: flex;
+              flex: 1;
+              flex-direction: column;
+              min-width: 0;
+              width: 100%;
+            }
+          `}</style>
+          <div data-conversation-home="panel" style={{ display: "flex", flexDirection: "column", flex: 1, minWidth: 0, minHeight: 0, height: "100%" }}>
+            <Stack direction="horizontal" align="center" justify="space-between" paddingLeft={3} paddingRight={2} paddingTop={1}>
+              <IconButton
+                icon="chat_add_on"
+                size="sm"
+                aria-label="New chat"
+                onClick={() => {
+                  setFeed([]);
+                  setPrompt("");
+                  setPinnedContext(null);
+                  setDismissedKey(null);
+                }}
+              />
+              <Chip label={`Claim detail - ${activeClaim}`} dropdown background={false} />
+              <IconButton icon="list" size="sm" aria-label="Conversation list" onClick={() => unavailable("Conversation list")} />
+            </Stack>
+            {conversationColumn()}
+          </div>
+        </AppShell.Aside>
+      ) : null}
     </AppShell>
   );
 }

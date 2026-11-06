@@ -1,0 +1,16 @@
+<svg preserveAspectRatio="none" overflow="visible" style="display: block;" width="65" height="80" viewBox="0 0 65 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="4" opacity="0.8" style="mix-blend-mode:multiply">
+<ellipse cx="32.5" cy="40" rx="32.5" ry="40" fill="url(#paint0_linear_0_136)"/>
+<path d="M32.5 2C48.9766 2 63 18.6051 63 40C63 61.3949 48.9766 78 32.5 78C16.0234 78 2 61.3949 2 40C2 18.6051 16.0234 2 32.5 2Z" stroke="url(#paint1_linear_0_136)" stroke-opacity="0.3" stroke-width="4"/>
+</g>
+<defs>
+<linearGradient id="paint0_linear_0_136" x1="65" y1="40" x2="0" y2="40" gradientUnits="userSpaceOnUse">
+<stop stop-color="#296DFD"/>
+<stop offset="1" stop-color="#8FB3FF" stop-opacity="0"/>
+</linearGradient>
+<linearGradient id="paint1_linear_0_136" x1="65" y1="40" x2="5.52556e-06" y2="40" gradientUnits="userSpaceOnUse">
+<stop stop-color="#296DFD"/>
+<stop offset="1" stop-color="#8FB3FF" stop-opacity="0"/>
+</linearGradient>
+</defs>
+</svg>

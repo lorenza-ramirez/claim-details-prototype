@@ -1,12 +1,23 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { directions } from "./directions";
 import { DirectionSwitcher } from "./components/DirectionSwitcher";
 import { VisionNext } from "./directions/vision-next";
 
-// Standalone pages with their own URL, outside the direction switcher.
-const PAGES: Record<string, () => React.JSX.Element> = {
-  "/visionnext": VisionNext,
-};
+const LegacyScreens = lazy(() =>
+  import("./legacyScreens").then((module) => ({ default: module.LegacyScreens })),
+);
+
+const PREVIOUS_PAGES = ["/", "/vision", "/vision2", "/vision2027"] as const;
+type PreviousPath = (typeof PREVIOUS_PAGES)[number];
+
+function currentPath() {
+  const path = window.location.pathname.replace(/\/+$/, "").toLowerCase();
+  return path === "" ? "/" : path;
+}
+
+function isPreviousPath(path: string): path is PreviousPath {
+  return PREVIOUS_PAGES.some((page) => page === path);
+}
 
 // The current direction is kept in the URL (#direction=direction-2),
 // so refreshing the page or sharing a link keeps the same direction.
@@ -17,8 +28,15 @@ function directionFromUrl(): string {
 }
 
 export function App() {
-  const Page = PAGES[window.location.pathname.replace(/\/+$/, "").toLowerCase()];
-  if (Page) return <Page />;
+  const path = currentPath();
+  if (path === "/visionnext") return <VisionNext />;
+  if (isPreviousPath(path)) {
+    return (
+      <Suspense fallback={null}>
+        <LegacyScreens path={path} />
+      </Suspense>
+    );
+  }
   return <Directions />;
 }
 

@@ -219,6 +219,7 @@ export function SourceRail({
   onClose,
   onDragSource,
   onDragEnd,
+  flushEnd = false,
 }: {
   active: SourceId | null;
   propertiesActive: boolean;
@@ -227,14 +228,17 @@ export function SourceRail({
   onClose: () => void;
   onDragSource: (event: DragEvent, source: SourceId) => void;
   onDragEnd: () => void;
+  /** Sit on the right edge of the claim frame. */
+  flushEnd?: boolean;
 }) {
   return (
     <div
       style={{
         height: "100%",
         flexShrink: 0,
+        marginLeft: flushEnd ? "auto" : undefined,
         borderLeft: "1px solid var(--ds-color-border-subtle)",
-        borderRight: "1px solid var(--ds-color-border-subtle)",
+        borderRight: flushEnd ? undefined : "1px solid var(--ds-color-border-subtle)",
       }}
     >
       <Stack direction="vertical" align="center" gap={3} paddingHorizontal={3} paddingTop={2} paddingBottom={3}>

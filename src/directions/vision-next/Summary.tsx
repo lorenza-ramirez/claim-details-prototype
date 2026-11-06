@@ -16,6 +16,8 @@ type Props = {
   onAccept: () => void;
   onAcceptResubmit: () => void;
   onViewMedicalRecord: () => void;
+  /** AI panel uses a white summary. The claim layout keeps the accent tint. */
+  surface?: "accent" | "base";
 };
 
 type Links = Pick<Props, "onOpenInitialSubmission" | "onOpenRemittance" | "onOpenDiagnosisCodes">;
@@ -209,6 +211,7 @@ export function Summary({
   onAccept,
   onAcceptResubmit,
   onViewMedicalRecord,
+  surface = "accent",
 }: Props) {
   const [feedback, setFeedback] = useState<"up" | "down" | null>(null);
   const [actionFeedback, setActionFeedback] = useState<"up" | "down" | null>(null);
@@ -219,7 +222,7 @@ export function Summary({
     <div
       onClick={onSelectSummary}
       style={{
-        background: "var(--ds-color-accent-25)",
+        background: surface === "base" ? "var(--ds-color-bg-solid-base)" : "var(--ds-color-accent-25)",
         border: "1px solid var(--ds-color-border-subtle)",
         borderRadius: "var(--ds-radius-round)",
         outline: selected === "summary" ? selectedOutline : undefined,
